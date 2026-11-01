@@ -1,0 +1,49 @@
+name: Release
+
+# 打 vX.Y.Z 标签即发布：先跑与 CI 相同的检查，再校验标签与 package.json 版本一致，
+# 然后发 npm（带 provenance 溯源）并创建 GitHub Release。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 检查与测试
+        run: |
+          npm run check
+          npm test
+
+      - name: 标签与 package.json 版本必须一致
+        run: |
+          node -e "const v=require('./package.json').version;const t=process.env.GITHUB_REF_NAME.replace(/^v/,'');if(v!==t){throw new Error('tag '+t+' != package.json '+v)};console.log('version '+v+' OK')"
+
+      - name: 内置素材完整性
+        run: |
+          node -e "const fs=require('fs'),path=require('path');const dir='assets/frames/slark';const m=JSON.parse(fs.readFileSync(path.join(dir,'manifest.json'),'utf8'));let n=0;for(const [k,a] of Object.entries(m.actions)){for(const y of a.yaws){if(y.files.length!==a.frames)throw new Error(k+' 帧数不符');for(const f of y.files){if(!fs.existsSync(path.join(dir,f)))throw new Error('缺帧 '+f);n++}}}console.log('帧文件齐全: '+n)"
+
+      - name: 发布到 npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            发布流程见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)。
+            安装：`pnpm add dsh-dota2-pet`
