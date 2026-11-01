@@ -60,6 +60,25 @@ DSH 插件本身只能渲染在 DSH 窗口内。Windows 上插件会额外拉起
 - 检测到本机 Dota 2 后，插件只读游戏文件、不复制、不落盘，后续版本会接入本机载入画面与英雄头像
 - 动作与技能对应关系直接读自游戏：`ACT_DOTA_CAST_ABILITY_1` → 黑暗契约、`ACT_DOTA_SLARK_POUNCE` → 突袭、`ACT_DOTA_SHADOW_DANCE_STATUE` → 暗影之舞
 
+## 版本与发布
+
+遵循[语义化版本](https://semver.org/lang/zh-CN/)；每个版本都在 [CHANGELOG.md](./CHANGELOG.md) 里写清"新增/修复/变更"，并打 `vX.Y.Z` 标签。
+
+```sh
+npm run check      # 语法检查（index.js / client.js / lib/find-dota.mjs）
+npm test           # 离线冒烟测试，不需要 DSH 在跑、不需要装 Dota 2
+git tag -a v0.1.1 -m "v0.1.1"
+git push origin main --tags
+npm publish        # prepublishOnly 会自动跑 check + test
+```
+
+CI（`.github/workflows/ci.yml`）在 Linux 与 Windows × Node 20/22 上跑同样的检查，另外校验：
+
+- `package.json` 的 `dsh.bundle.patch` / `dsh.client` 是否有效、`files` 列出的路径是否都存在
+- 内置动作帧的完整性（每个动作的帧数与 `manifest.json` 一一对应，缺帧直接失败）
+
+想把插件上架 DSH 插件市场：往 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 提一个 PR 加一条目录（市场与 [dshmarket.com](https://dshmarket.com) 会自动收录，通常一天内生效）。
+
 ## 许可
 
-MIT。Dota 2 及其素材版权归 Valve 所有；本插件只在你本机的游戏文件上做读取与渲染，不再分发游戏素材。
+MIT（见 [LICENSE](./LICENSE)）。Dota 2 及其素材版权归 Valve 所有；本插件只在你本机的游戏文件上做读取与渲染，不再分发游戏素材——仓库里的动作帧是由 `tools/bake` 在你本机游戏上离线渲染得到的。
