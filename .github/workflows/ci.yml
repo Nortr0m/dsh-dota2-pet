@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: 语法检查
+        run: |
+          node --check index.js
+          node --check client.js
+          node --check lib/find-dota.mjs
+
+      - name: 冒烟测试（离线，不需要 DSH 与 Dota 2）
+        run: node --test
+
+      - name: 校验 package.json 的 dsh 字段与 patch 文件
+        run: node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));const patch=p.dsh&&p.dsh.bundle&&p.dsh.bundle.patch;if(!patch||!fs.existsSync(patch))throw new Error('dsh.bundle.patch 缺失');const c=p.dsh.client;if(!c||c.platform!=='web')throw new Error('dsh.client 配置缺失');for(const f of p.files||[]){if(!fs.existsSync(f))throw new Error('files 里列了不存在的路径: '+f)}console.log('package.json OK')"
+
+      - name: 内置动作帧完整性（manifest 与文件一一对应）
+        run: node -e "const fs=require('fs'),path=require('path');const dir='assets/frames/slark';const m=JSON.parse(fs.readFileSync(path.join(dir,'manifest.json'),'utf8'));let n=0,miss=[];for(const [name,a] of Object.entries(m.actions)){for(const y of a.yaws){if(y.files.length!==a.frames)throw new Error(name+' 帧数不符');for(const f of y.files){n++;if(!fs.existsSync(path.join(dir,f)))miss.push(f)}}}if(miss.length)throw new Error('缺帧: '+miss.slice(0,5));console.log('帧文件齐全: '+n)"

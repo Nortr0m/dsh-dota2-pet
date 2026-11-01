@@ -1,0 +1,549 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Dota 2 英雄 3D 渲染器（无第三方依赖，纯 numpy + Pillow）
+
+流程：
+    GLB 解析 -> 动画采样 -> 骨骼层级求世界矩阵 -> 线性混合蒙皮(LBS)
+    -> 透视投影 -> 三角形光栅化(z-buffer) -> Gouraud 着色 -> 带透明通道 PNG
+
+用法示例：
+    python render.py --glb export/slark.glb --anim portrait --t 0.4 \
+        --yaw 25 --pitch 8 --size 420 --out gray_slark.png
+    python render.py --glb export/slark.glb --bake portrait --frames 24 \
+        --yaws 8 --outdir frames3d/slark --size 220
+"""
+
+import argparse
+import json
+import math
+import os
+import struct
+import numpy as np
+from PIL import Image
+
+# ---------------------------------------------------------------- GLB 解析
+
+_COMP = {5120: ("i1", 1), 5121: ("u1", 1), 5122: ("i2", 2), 5123: ("u2", 2),
+         5125: ("u4", 4), 5126: ("f4", 4)}
+_NUM = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT2": 4, "MAT3": 9, "MAT4": 16}
+
+
+def _accessor(j, blob, idx):
+    a = j["accessors"][idx]
+    fmt, size = _COMP[a["componentType"]]
+    n = _NUM[a["type"]]
+    count = a["count"]
+    if "bufferView" not in a:
+        return np.zeros((count, n), dtype=np.float64)
+    bv = j["bufferViews"][a["bufferView"]]
+    base = bv.get("byteOffset", 0) + a.get("byteOffset", 0)
+    stride = bv.get("byteStride") or size * n
+    dt = np.dtype("<" + fmt)
+    if stride == size * n:
+        arr = np.frombuffer(blob, dtype=dt, count=count * n, offset=base).reshape(count, n)
+    else:
+        raw = np.frombuffer(blob, dtype=np.uint8, count=stride * (count - 1) + size * n, offset=base)
+        arr = np.stack([raw[i * stride:i * stride + size * n].view(dt).reshape(n) for i in range(count)])
+    arr = arr.astype(np.float64)
+    if a.get("normalized"):
+        mx = {"i1": 127.0, "u1": 255.0, "i2": 32767.0, "u2": 65535.0}.get(fmt)
+        if mx:
+            arr = np.maximum(arr / mx, -1.0)
+    return arr
+
+
+class Model:
+    """一个 GLB 里的可渲染内容。"""
+
+    def __init__(self, path):
+        data = open(path, "rb").read()
+        magic, ver, length = struct.unpack("<III", data[:12])
+        assert magic == 0x46546C67, "不是 GLB 文件"
+        off, self.json, self.blob = 12, None, b""
+        while off < length:
+            clen, ctype = struct.unpack("<II", data[off:off + 8])
+            chunk = data[off + 8:off + 8 + clen]
+            if ctype == 0x4E4F534A:
+                self.json = json.loads(chunk.decode("utf-8"))
+            elif ctype == 0x004E4942:
+                self.blob = chunk
+            off += 8 + clen
+        j = self.json
+        self.dir = os.path.dirname(os.path.abspath(path))
+        self.nodes = j.get("nodes", [])
+        self.scene_roots = j.get("scenes", [{}])[j.get("scene", 0)].get("nodes", [])
+
+        # 网格：把所有 primitive 拼成一整块
+        pos, nrm, uv, joints, weights, index, mat = [], [], [], [], [], [], []
+        base = 0
+        for mesh in j.get("meshes", []):
+            for pr in mesh["primitives"]:
+                at = pr["attributes"]
+                p = _accessor(j, self.blob, at["POSITION"])
+                pos.append(p)
+                nrm.append(_accessor(j, self.blob, at["NORMAL"]) if "NORMAL" in at else np.zeros_like(p))
+                uv.append(_accessor(j, self.blob, at["TEXCOORD_0"]) if "TEXCOORD_0" in at else np.zeros((len(p), 2)))
+                mat.append(np.full(len(p), pr.get("material", -1), dtype=np.int64))
+                if "JOINTS_0" in at and "WEIGHTS_0" in at:
+                    joints.append(_accessor(j, self.blob, at["JOINTS_0"]).astype(np.int64))
+                    w = _accessor(j, self.blob, at["WEIGHTS_0"])
+                    s = w.sum(axis=1, keepdims=True)
+                    s[s == 0] = 1.0
+                    weights.append(w / s)
+                else:
+                    joints.append(np.zeros((len(p), 4), dtype=np.int64))
+                    weights.append(np.zeros((len(p), 4)))
+                if "indices" in pr:
+                    ix = _accessor(j, self.blob, pr["indices"]).astype(np.int64).ravel() + base
+                else:
+                    ix = np.arange(len(p), dtype=np.int64) + base
+                index.append(ix)
+                base += len(p)
+        self.POS = np.concatenate(pos) if pos else np.zeros((0, 3))
+        self.NRM = np.concatenate(nrm) if nrm else np.zeros((0, 3))
+        self.UV = np.concatenate(uv) if uv else np.zeros((0, 2))
+        self.JOINTS = np.concatenate(joints).astype(np.int64) if joints else np.zeros((0, 4), np.int64)
+        self.WEIGHTS = np.concatenate(weights) if weights else np.zeros((0, 4))
+        self.INDEX = np.concatenate(index).astype(np.int64) if index else np.zeros(0, np.int64)
+        self.MAT = np.concatenate(mat) if mat else np.full(len(self.POS), -1, np.int64)
+        self._load_textures()
+        self.TRIS = self.INDEX.reshape(-1, 3)
+
+        # 骨骼
+        self.skin_joints = []
+        self.ibm = None
+        if j.get("skins"):
+            sk = j["skins"][0]
+            self.skin_joints = np.array(sk.get("joints", []), dtype=np.int64)
+            if "inverseBindMatrices" in sk:
+                m = _accessor(j, self.blob, sk["inverseBindMatrices"])
+                self.ibm = m.reshape(-1, 4, 4).transpose(0, 2, 1)   # 列主序 -> 行主序
+
+        # 动画
+        self.anims = {}
+        for a in j.get("animations", []):
+            self.anims[a.get("name", "?")] = a
+
+    # ---------------------------------------------------------- 姿态求值
+    def _node_local(self, i, over):
+        nd = self.nodes[i]
+        o = over.get(i, {})
+        if "matrix" in nd and not o:
+            return np.array(nd["matrix"], dtype=np.float64).reshape(4, 4).T
+        t = np.array(o.get("translation", nd.get("translation", [0, 0, 0])), dtype=np.float64)
+        r = np.array(o.get("rotation", nd.get("rotation", [0, 0, 0, 1])), dtype=np.float64)
+        s = np.array(o.get("scale", nd.get("scale", [1, 1, 1])), dtype=np.float64)
+        x, y, z, w = r
+        n = math.sqrt(x * x + y * y + z * z + w * w) or 1.0
+        x, y, z, w = x / n, y / n, z / n, w / n
+        m = np.eye(4)
+        m[:3, :3] = np.array([
+            [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+        m[:3, :3] *= s[None, :]
+        m[:3, 3] = t
+        return m
+
+    def _world(self, over):
+        out = {}
+        stack = [(r, np.eye(4)) for r in self.scene_roots]
+        while stack:
+            i, parent = stack.pop()
+            m = parent @ self._node_local(i, over)
+            out[i] = m
+            for c in self.nodes[i].get("children", []):
+                stack.append((c, m))
+        return out
+
+    def merge_parts(self, paths):
+        """把静态部件（默认饰品）并进本体：按绑定姿势的最近骨骼做刚性绑定。"""
+        world = self._world({})
+        if len(self.skin_joints):
+            bone_pos = np.array([world[int(n)][:3, 3] for n in self.skin_joints])
+        else:
+            bone_pos = None
+        for path in paths:
+            pm = Model(path)
+            mats = pm.json.get("materials", [])
+            own = self.json.setdefault("materials", [])
+            remap = {}
+            for mi in range(len(pm.tex)):
+                want = mats[mi].get("name") if mi < len(mats) else None
+                idx = None
+                for i, mt in enumerate(own):
+                    if mt.get("name") == want:
+                        idx = i
+                        break
+                if idx is None:
+                    own.append(mats[mi] if mi < len(mats) else {"name": want})
+                    self.tex.append(pm.tex[mi])
+                    idx = len(self.tex) - 1
+                remap[mi] = idx
+            n = len(pm.POS)
+            off = len(self.POS)
+            if bone_pos is not None and len(bone_pos):
+                d = ((pm.POS[:, None, :] - bone_pos[None, :, :]) ** 2).sum(axis=2)
+                near = d.argmin(axis=1)
+                js = self.skin_joints if isinstance(self.skin_joints, np.ndarray) else np.array(self.skin_joints)
+                jm = js[near]
+                j4 = np.stack([jm, np.zeros(n, np.int64), np.zeros(n, np.int64), np.zeros(n, np.int64)], axis=1)
+                w4 = np.zeros((n, 4))
+                w4[:, 0] = 1.0
+            else:
+                j4 = np.zeros((n, 4), np.int64)
+                w4 = np.zeros((n, 4))
+            pm_mat = np.array([remap.get(int(m), -1) for m in pm.MAT])
+            self.POS = np.vstack([self.POS, pm.POS])
+            self.NRM = np.vstack([self.NRM, pm.NRM])
+            self.UV = np.vstack([self.UV, pm.UV])
+            self.JOINTS = np.vstack([self.JOINTS, j4])
+            self.WEIGHTS = np.vstack([self.WEIGHTS, w4])
+            self.MAT = np.concatenate([self.MAT, pm_mat])
+            self.TRIS = np.vstack([self.TRIS, pm.TRIS + off])
+        self.skin_joints = np.array(self.skin_joints)
+        self.INDEX = self.TRIS.ravel()
+        return self
+
+    def _load_textures(self):
+        """从 GLB 里取出每个材质的 baseColor 贴图。"""
+        from io import BytesIO
+        j = self.json
+        self.tex = []
+        for mt in j.get("materials", []):
+            img = None
+            bct = mt.get("pbrMetallicRoughness", {}).get("baseColorTexture")
+            if bct is not None:
+                src = j["textures"][bct["index"]].get("source")
+                if src is not None:
+                    im = j["images"][src]
+                    if "bufferView" in im and im.get("bufferView") is not None:
+                        bv = j["bufferViews"][im["bufferView"]]
+                        off = bv.get("byteOffset", 0)
+                        raw = self.blob[off:off + bv["byteLength"]]
+                        try:
+                            img = Image.open(BytesIO(raw)).convert("RGBA")
+                        except Exception:
+                            img = None
+                    else:
+                        # 贴图未内嵌：VRF 会把解码后的 PNG 放在 GLB 同级目录，用名字对应
+                        nm = im.get("name") or ""
+                        cand = os.path.join(self.dir, os.path.splitext(nm)[0] + ".png")
+                        if os.path.exists(cand):
+                            try:
+                                img = Image.open(cand).convert("RGBA")
+                            except Exception:
+                                img = None
+            self.tex.append(np.asarray(img).astype(np.float64) if img is not None else None)
+
+    def vertex_colors(self):
+        """每个顶点的底色（双线性采样 baseColor 贴图）。"""
+        out = np.tile(np.array([188.0, 192.0, 200.0]), (len(self.POS), 1))
+        for mi, img in enumerate(self.tex):
+            if img is None:
+                continue
+            sel = self.MAT == mi
+            if not sel.any():
+                continue
+            h, w = img.shape[:2]
+            u = np.clip(self.UV[sel, 0], 0.0, 1.0) * (w - 1)
+            v = np.clip(self.UV[sel, 1], 0.0, 1.0) * (h - 1)
+            x0 = np.floor(u).astype(int); y0 = np.floor(v).astype(int)
+            x1 = np.minimum(x0 + 1, w - 1); y1 = np.minimum(y0 + 1, h - 1)
+            fx = (u - x0)[:, None]; fy = (v - y0)[:, None]
+            out[sel] = (img[y0, x0] * (1 - fx) * (1 - fy) + img[y1, x0] * (1 - fx) * fy
+                        + img[y0, x1] * fx * (1 - fy) + img[y1, x1] * fx * fy)
+        return np.clip(out, 0, 255)
+
+    def sample(self, anim_name, t):
+        """按动画名与时间采样，返回 node -> {translation/rotation/scale} 覆盖。"""
+        a = self.anims.get(anim_name)
+        if a is None:
+            return {}
+        over = {}
+        for ch in a["channels"]:
+            s = a["samplers"][ch["sampler"]]
+            times = _accessor(self.json, self.blob, s["input"]).ravel()
+            vals = _accessor(self.json, self.blob, s["output"])
+            path = ch["target"]["path"]
+            node = ch["target"]["node"]
+            if len(times) == 0:
+                continue
+            interp = s.get("interpolation", "LINEAR")
+            if interp == "CUBICSPLINE":
+                vals = vals.reshape(len(times), 3, -1)[:, 1, :]
+            if t <= times[0]:
+                v = vals[0]
+            elif t >= times[-1]:
+                v = vals[-1]
+            else:
+                i = int(np.searchsorted(times, t) - 1)
+                dt = times[i + 1] - times[i]
+                f = 0.0 if dt <= 0 else (t - times[i]) / dt
+                v = vals[i] if interp == "STEP" else vals[i] * (1 - f) + vals[i + 1] * f
+            over.setdefault(node, {})[path] = v
+        return over
+
+    def pose_vertices(self, over):
+        """蒙皮后的顶点位置与法线。"""
+        world = self._world(over)
+        if len(self.skin_joints) and self.ibm is not None and len(self.ibm) == len(self.skin_joints):
+            jm = np.stack([world.get(int(n), np.eye(4)) @ self.ibm[k] for k, n in enumerate(self.skin_joints)])
+            p = self.POS
+            ph = np.concatenate([p, np.ones((len(p), 1))], axis=1)
+            acc = np.zeros((len(p), 4))
+            nacc = np.zeros((len(p), 4))
+            nh = np.concatenate([self.NRM, np.zeros((len(self.NRM), 1))], axis=1)
+            for k in range(4):
+                Mk = jm[self.JOINTS[:, k]]
+                wk = self.WEIGHTS[:, k:k + 1]
+                acc += wk * np.einsum("nij,nj->ni", Mk, ph)
+                nacc += wk * np.einsum("nij,nj->ni", Mk, nh)
+        else:
+            m = np.eye(4)
+            for r in self.scene_roots:
+                pass
+            acc = np.concatenate([self.POS, np.ones((len(self.POS), 1))], axis=1)
+            nacc = np.concatenate([self.NRM, np.zeros((len(self.NRM), 1))], axis=1)
+        self.last_world = world
+        pos = acc[:, :3]
+        nrm = nacc[:, :3]
+        ln = np.linalg.norm(nrm, axis=1, keepdims=True)
+        ln[ln == 0] = 1
+        return pos, nrm / ln
+
+
+# ---------------------------------------------------------------- 相机 / 光栅化
+
+def look_at(eye, target, up):
+    f = target - eye
+    f = f / (np.linalg.norm(f) or 1)
+    r = np.cross(f, up)
+    r = r / (np.linalg.norm(r) or 1)
+    u = np.cross(r, f)
+    m = np.eye(4)
+    m[0, :3], m[1, :3], m[2, :3] = r, u, -f
+    m[:3, 3] = -m[:3, :3] @ eye
+    return m
+
+
+def perspective(fovy, aspect, near, far):
+    t = 1.0 / math.tan(fovy / 2)
+    m = np.zeros((4, 4))
+    m[0, 0] = t / aspect
+    m[1, 1] = t
+    m[2, 2] = (far + near) / (near - far)
+    m[2, 3] = 2 * far * near / (near - far)
+    m[3, 2] = -1
+    return m
+
+
+def _sample_tex(img, u, v):
+    """双线性采样（逐像素调用，u/v 已是像素坐标）。"""
+    h, w = img.shape[:2]
+    x0 = np.clip(np.floor(u).astype(np.int32), 0, w - 1)
+    y0 = np.clip(np.floor(v).astype(np.int32), 0, h - 1)
+    x1 = np.clip(x0 + 1, 0, w - 1)
+    y1 = np.clip(y0 + 1, 0, h - 1)
+    fx = (u - x0)[..., None]
+    fy = (v - y0)[..., None]
+    return (img[y0, x0] * (1 - fx) * (1 - fy) + img[y1, x0] * (1 - fx) * fy
+            + img[y0, x1] * fx * (1 - fy) + img[y1, x1] * fx * fy)
+
+
+def rasterize(tri, nrm_tri, uv_tri, mat_tri, tex, idx, W, H, lights=None,
+              amb=0.54, alpha_test=0.35):
+    """逐像素插值法线与 UV，采样贴图并做光照。"""
+    img = np.zeros((H, W, 3), np.float64)
+    zbuf = np.full((H, W), np.inf)
+    mask = np.zeros((H, W), bool)
+    order = np.argsort(tri[:, :, 2].mean(axis=1))[::-1]      # 远到近
+    for i in order:
+        x, y, z = tri[i, :, 0], tri[i, :, 1], tri[i, :, 2]
+        x0 = max(int(np.floor(x.min())), 0)
+        x1 = min(int(np.ceil(x.max())) + 1, W)
+        y0 = max(int(np.floor(y.min())), 0)
+        y1 = min(int(np.ceil(y.max())) + 1, H)
+        if x1 <= x0 or y1 <= y0:
+            continue
+        PX, PY = np.meshgrid(np.arange(x0, x1) + 0.5, np.arange(y0, y1) + 0.5)
+        d = (y[1] - y[2]) * (x[0] - x[2]) + (x[2] - x[1]) * (y[0] - y[2])
+        if abs(d) < 1e-12:
+            continue
+        l0 = ((y[1] - y[2]) * (PX - x[2]) + (x[2] - x[1]) * (PY - y[2])) / d
+        l1 = ((y[2] - y[0]) * (PX - x[2]) + (x[0] - x[2]) * (PY - y[2])) / d
+        l2 = 1.0 - l0 - l1
+        better = (l0 >= -1e-9) & (l1 >= -1e-9) & (l2 >= -1e-9)
+        if not better.any():
+            continue
+        zz = l0 * z[0] + l1 * z[1] + l2 * z[2]
+        sub = zbuf[y0:y1, x0:x1]
+        better &= (zz < sub)
+        if not better.any():
+            continue
+
+        n = (l0[..., None] * nrm_tri[i, 0] + l1[..., None] * nrm_tri[i, 1]
+             + l2[..., None] * nrm_tri[i, 2])
+        nn = np.linalg.norm(n, axis=2, keepdims=True)
+        nn[nn == 0] = 1.0
+        nd = n / nn
+        lam = np.zeros(nd.shape[:2])
+        for lv, lw in (lights or []):
+            lam += np.clip(nd @ lv, 0.0, 1.0) * lw
+        shade = np.clip(amb + 1.15 * lam, 0.0, 1.60)
+
+        uv = (l0[..., None] * uv_tri[i, 0] + l1[..., None] * uv_tri[i, 1]
+              + l2[..., None] * uv_tri[i, 2])
+        t = tex[mat_tri[i]] if 0 <= mat_tri[i] < len(tex) else None
+        if t is not None:
+            th, tw = t.shape[:2]
+            # Source 2 的 UV 可超出 [0,1]，表示纹理环绕平铺（REPEAT），必须取模而非夹取
+            alb = _sample_tex(t, (uv[..., 0] % 1.0) * (tw - 1),
+                              (uv[..., 1] % 1.0) * (th - 1))
+            if t.shape[2] == 4:
+                better = better & (alb[..., 3] > alpha_test)
+                if not better.any():
+                    continue
+            col = alb[..., :3] * shade[..., None]
+        else:
+            col = np.array([188.0, 192.0, 200.0]) * shade[..., None]
+        sub[better] = zz[better]
+        img[y0:y1, x0:x1][better] = np.clip(col[better], 0, 255)
+        mask[y0:y1, x0:x1][better] = True
+    return img, mask
+
+
+def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
+           light=(0.42, 0.78, 0.46), ss=2, textured=True, framing="full"):
+    pos, nrm = model.pose_vertices(over)
+    if len(pos) == 0:
+        return Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    lo, hi = pos.min(axis=0), pos.max(axis=0)
+    center = (lo + hi) / 2.0
+    radius = max(np.linalg.norm(hi - lo) / 2.0, 1e-3)
+
+    if framing == "portrait":
+        # 对准头部骨骼做胸像取景：官方头像就是这种构图
+        body_h = float(hi[1] - lo[1])
+        head_y = lo[1] + 0.86 * body_h
+        world = getattr(model, "last_world", {}) or {}
+        for ni, nd in enumerate(model.nodes):
+            nm = (nd.get("name") or "").lower()
+            if "head" in nm and "hitloc" not in nm and "look" not in nm and ni in world:
+                head_y = float(world[ni][1, 3])
+                break
+        center = np.array([center[0], head_y, center[2]])
+        radius = max(body_h * 0.30, 1e-3)
+
+    ya, pa = math.radians(yaw), math.radians(pitch)
+    dist = radius / math.tan(math.radians(fov) / 2) * 1.05
+    eye = center + np.array([math.sin(ya) * math.cos(pa), math.sin(pa),
+                             math.cos(ya) * math.cos(pa)]) * dist
+    view = look_at(eye, center, np.array([0.0, 1.0, 0.0]))
+    proj = perspective(math.radians(fov), 1.0, max(dist - radius * 2, 0.01), dist + radius * 4)
+
+    W = H = int(size * ss)
+    vw = (view @ np.concatenate([pos, np.ones((len(pos), 1))], axis=1).T).T
+    clip = (proj @ vw.T).T
+    w = clip[:, 3:4].copy()
+    w[np.abs(w) < 1e-9] = 1e-9
+    ndc = clip[:, :3] / w
+    scr = np.stack([(ndc[:, 0] * 0.5 + 0.5) * W,
+                    (1.0 - (ndc[:, 1] * 0.5 + 0.5)) * H,
+                    -vw[:, 2]], axis=1)
+
+    to_eye = eye - center
+    to_eye = to_eye / (np.linalg.norm(to_eye) or 1.0)
+    L1 = to_eye + np.array([0.34, 0.46, 0.0])
+    L1 = L1 / (np.linalg.norm(L1) or 1.0)          # 跟随相机的主光（头灯偏上偏左）
+    L2 = -to_eye + np.array([0.0, 0.35, 0.15])
+    L2 = L2 / (np.linalg.norm(L2) or 1.0)          # 背侧补光
+    lights = [(L1, 0.92), (L2, 0.26)]
+
+    L = np.array(light, np.float64)
+    L = L / np.linalg.norm(L)
+
+    # 法线自定向：若整体朝内（正面几乎收不到光），翻转一次
+    fwd = np.clip(nrm @ L, 0.0, 1.0).mean()
+    bwd = np.clip(-(nrm @ L), 0.0, 1.0).mean()
+    flipped = bwd > fwd
+    if flipped:
+        nrm = -nrm
+
+    tri = scr[model.TRIS]
+    nrm_tri = nrm[model.TRIS]
+    uv_tri = model.UV[model.TRIS]
+    mat_tri = model.MAT[model.TRIS[:, 0]]
+    area = ((tri[:, 1, 0] - tri[:, 0, 0]) * (tri[:, 2, 1] - tri[:, 0, 1])
+            - (tri[:, 2, 0] - tri[:, 0, 0]) * (tri[:, 1, 1] - tri[:, 0, 1]))
+    keep = area > 0
+    tex = model.tex if textured else [None] * len(model.tex)
+    if os.environ.get('D2_SHOW_NORMALS'):
+        print('  法线朝向: 原始lam均值=%.3f 翻转后=%.3f -> %s' % (fwd, bwd, '已翻转' if flipped else '保持'))
+    rgb, mask = rasterize(tri[keep], nrm_tri[keep], uv_tri[keep], mat_tri[keep],
+                          tex, model.TRIS[keep], W, H, lights)
+    img = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB").resize((size, size), Image.LANCZOS)
+    al = Image.fromarray((mask * 255).astype(np.uint8), "L").resize((size, size), Image.LANCZOS)
+    out = img.convert("RGBA")
+    out.putalpha(al)
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--glb", required=True)
+    ap.add_argument("--anim", default=None)
+    ap.add_argument("--t", type=float, default=0.0)
+    ap.add_argument("--yaw", type=float, default=25.0)
+    ap.add_argument("--pitch", type=float, default=8.0)
+    ap.add_argument("--size", type=int, default=420)
+    ap.add_argument("--mode", default="shaded")
+    ap.add_argument("--gray", action="store_true")
+    ap.add_argument("--out", default="out.png")
+    ap.add_argument("--bake", default=None)
+    ap.add_argument("--frames", type=int, default=24)
+    ap.add_argument("--yaws", type=int, default=1)
+    ap.add_argument("--outdir", default="frames3d")
+    ap.add_argument("--list", action="store_true")
+    args = ap.parse_args()
+
+    m = Model(args.glb)
+    print("顶点 %d  三角形 %d  骨骼 %d  动画 %d" % (
+        len(m.POS), len(m.TRIS), len(m.skin_joints), len(m.anims)))
+    if args.list:
+        names = sorted(m.anims)
+        print("动画名（前 40）:", names[:40])
+        return
+
+    if args.bake:
+        a = m.anims.get(args.bake)
+        if a is None:
+            print("没有动画:", args.bake)
+            return
+        s = a["samplers"][0]
+        times = _accessor(m.json, m.blob, s["input"]).ravel()
+        span = float(times[-1] - times[0]) if len(times) else 1.0
+        os.makedirs(args.outdir, exist_ok=True)
+        n = 0
+        for yi in range(max(1, args.yaws)):
+            yaw = -180.0 + 360.0 * yi / max(1, args.yaws)
+            for fi in range(args.frames):
+                t = times[0] + span * fi / max(1, args.frames)
+                img = render(m, m.sample(args.bake, t), size=args.size, yaw=yaw,
+                             pitch=args.pitch, mode=args.mode, textured=not args.gray)
+                img.save(os.path.join(args.outdir, "y%02d_f%03d.png" % (yi, fi)))
+                n += 1
+        print("烘焙完成 %d 帧 -> %s" % (n, args.outdir))
+        return
+
+    img = render(m, m.sample(args.anim, args.t) if args.anim else {}, size=args.size,
+                 yaw=args.yaw, pitch=args.pitch, mode=args.mode, textured=not args.gray)
+    img.save(args.out)
+    a = np.asarray(img)
+    cov = (a[:, :, 3] > 8).mean()
+    print("已输出 %s  透明占比=%.1f%%" % (args.out, (1 - cov) * 100))
+
+
+if __name__ == "__main__":
+    main()

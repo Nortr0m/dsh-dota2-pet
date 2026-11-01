@@ -1,0 +1,407 @@
+{
+ "size": 220,
+ "pitch": 6.0,
+ "yaws": 2,
+ "actions": {
+  "idle_anim": {
+   "frames": 24,
+   "loop": true,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "idle_anim_y00_f000.png",
+      "idle_anim_y00_f001.png",
+      "idle_anim_y00_f002.png",
+      "idle_anim_y00_f003.png",
+      "idle_anim_y00_f004.png",
+      "idle_anim_y00_f005.png",
+      "idle_anim_y00_f006.png",
+      "idle_anim_y00_f007.png",
+      "idle_anim_y00_f008.png",
+      "idle_anim_y00_f009.png",
+      "idle_anim_y00_f010.png",
+      "idle_anim_y00_f011.png",
+      "idle_anim_y00_f012.png",
+      "idle_anim_y00_f013.png",
+      "idle_anim_y00_f014.png",
+      "idle_anim_y00_f015.png",
+      "idle_anim_y00_f016.png",
+      "idle_anim_y00_f017.png",
+      "idle_anim_y00_f018.png",
+      "idle_anim_y00_f019.png",
+      "idle_anim_y00_f020.png",
+      "idle_anim_y00_f021.png",
+      "idle_anim_y00_f022.png",
+      "idle_anim_y00_f023.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "idle_anim_y01_f000.png",
+      "idle_anim_y01_f001.png",
+      "idle_anim_y01_f002.png",
+      "idle_anim_y01_f003.png",
+      "idle_anim_y01_f004.png",
+      "idle_anim_y01_f005.png",
+      "idle_anim_y01_f006.png",
+      "idle_anim_y01_f007.png",
+      "idle_anim_y01_f008.png",
+      "idle_anim_y01_f009.png",
+      "idle_anim_y01_f010.png",
+      "idle_anim_y01_f011.png",
+      "idle_anim_y01_f012.png",
+      "idle_anim_y01_f013.png",
+      "idle_anim_y01_f014.png",
+      "idle_anim_y01_f015.png",
+      "idle_anim_y01_f016.png",
+      "idle_anim_y01_f017.png",
+      "idle_anim_y01_f018.png",
+      "idle_anim_y01_f019.png",
+      "idle_anim_y01_f020.png",
+      "idle_anim_y01_f021.png",
+      "idle_anim_y01_f022.png",
+      "idle_anim_y01_f023.png"
+     ]
+    }
+   ],
+   "duration": 1.5,
+   "fps": 16.0
+  },
+  "@run": {
+   "frames": 16,
+   "loop": true,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "run_y00_f000.png",
+      "run_y00_f001.png",
+      "run_y00_f002.png",
+      "run_y00_f003.png",
+      "run_y00_f004.png",
+      "run_y00_f005.png",
+      "run_y00_f006.png",
+      "run_y00_f007.png",
+      "run_y00_f008.png",
+      "run_y00_f009.png",
+      "run_y00_f010.png",
+      "run_y00_f011.png",
+      "run_y00_f012.png",
+      "run_y00_f013.png",
+      "run_y00_f014.png",
+      "run_y00_f015.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "run_y01_f000.png",
+      "run_y01_f001.png",
+      "run_y01_f002.png",
+      "run_y01_f003.png",
+      "run_y01_f004.png",
+      "run_y01_f005.png",
+      "run_y01_f006.png",
+      "run_y01_f007.png",
+      "run_y01_f008.png",
+      "run_y01_f009.png",
+      "run_y01_f010.png",
+      "run_y01_f011.png",
+      "run_y01_f012.png",
+      "run_y01_f013.png",
+      "run_y01_f014.png",
+      "run_y01_f015.png"
+     ]
+    }
+   ],
+   "duration": 0.8,
+   "fps": 20.0
+  },
+  "attack_anim": {
+   "frames": 12,
+   "loop": false,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "attack_anim_y00_f000.png",
+      "attack_anim_y00_f001.png",
+      "attack_anim_y00_f002.png",
+      "attack_anim_y00_f003.png",
+      "attack_anim_y00_f004.png",
+      "attack_anim_y00_f005.png",
+      "attack_anim_y00_f006.png",
+      "attack_anim_y00_f007.png",
+      "attack_anim_y00_f008.png",
+      "attack_anim_y00_f009.png",
+      "attack_anim_y00_f010.png",
+      "attack_anim_y00_f011.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "attack_anim_y01_f000.png",
+      "attack_anim_y01_f001.png",
+      "attack_anim_y01_f002.png",
+      "attack_anim_y01_f003.png",
+      "attack_anim_y01_f004.png",
+      "attack_anim_y01_f005.png",
+      "attack_anim_y01_f006.png",
+      "attack_anim_y01_f007.png",
+      "attack_anim_y01_f008.png",
+      "attack_anim_y01_f009.png",
+      "attack_anim_y01_f010.png",
+      "attack_anim_y01_f011.png"
+     ]
+    }
+   ],
+   "duration": 1.0,
+   "fps": 12.0
+  },
+  "pounce_anim": {
+   "frames": 14,
+   "loop": false,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "pounce_anim_y00_f000.png",
+      "pounce_anim_y00_f001.png",
+      "pounce_anim_y00_f002.png",
+      "pounce_anim_y00_f003.png",
+      "pounce_anim_y00_f004.png",
+      "pounce_anim_y00_f005.png",
+      "pounce_anim_y00_f006.png",
+      "pounce_anim_y00_f007.png",
+      "pounce_anim_y00_f008.png",
+      "pounce_anim_y00_f009.png",
+      "pounce_anim_y00_f010.png",
+      "pounce_anim_y00_f011.png",
+      "pounce_anim_y00_f012.png",
+      "pounce_anim_y00_f013.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "pounce_anim_y01_f000.png",
+      "pounce_anim_y01_f001.png",
+      "pounce_anim_y01_f002.png",
+      "pounce_anim_y01_f003.png",
+      "pounce_anim_y01_f004.png",
+      "pounce_anim_y01_f005.png",
+      "pounce_anim_y01_f006.png",
+      "pounce_anim_y01_f007.png",
+      "pounce_anim_y01_f008.png",
+      "pounce_anim_y01_f009.png",
+      "pounce_anim_y01_f010.png",
+      "pounce_anim_y01_f011.png",
+      "pounce_anim_y01_f012.png",
+      "pounce_anim_y01_f013.png"
+     ]
+    }
+   ],
+   "duration": 1.125,
+   "fps": 12.44
+  },
+  "dark_pact_anim": {
+   "frames": 14,
+   "loop": false,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "dark_pact_anim_y00_f000.png",
+      "dark_pact_anim_y00_f001.png",
+      "dark_pact_anim_y00_f002.png",
+      "dark_pact_anim_y00_f003.png",
+      "dark_pact_anim_y00_f004.png",
+      "dark_pact_anim_y00_f005.png",
+      "dark_pact_anim_y00_f006.png",
+      "dark_pact_anim_y00_f007.png",
+      "dark_pact_anim_y00_f008.png",
+      "dark_pact_anim_y00_f009.png",
+      "dark_pact_anim_y00_f010.png",
+      "dark_pact_anim_y00_f011.png",
+      "dark_pact_anim_y00_f012.png",
+      "dark_pact_anim_y00_f013.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "dark_pact_anim_y01_f000.png",
+      "dark_pact_anim_y01_f001.png",
+      "dark_pact_anim_y01_f002.png",
+      "dark_pact_anim_y01_f003.png",
+      "dark_pact_anim_y01_f004.png",
+      "dark_pact_anim_y01_f005.png",
+      "dark_pact_anim_y01_f006.png",
+      "dark_pact_anim_y01_f007.png",
+      "dark_pact_anim_y01_f008.png",
+      "dark_pact_anim_y01_f009.png",
+      "dark_pact_anim_y01_f010.png",
+      "dark_pact_anim_y01_f011.png",
+      "dark_pact_anim_y01_f012.png",
+      "dark_pact_anim_y01_f013.png"
+     ]
+    }
+   ],
+   "duration": 1.5,
+   "fps": 9.33
+  },
+  "@shadow_dance": {
+   "frames": 12,
+   "loop": true,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "shadow_dance_y00_f000.png",
+      "shadow_dance_y00_f001.png",
+      "shadow_dance_y00_f002.png",
+      "shadow_dance_y00_f003.png",
+      "shadow_dance_y00_f004.png",
+      "shadow_dance_y00_f005.png",
+      "shadow_dance_y00_f006.png",
+      "shadow_dance_y00_f007.png",
+      "shadow_dance_y00_f008.png",
+      "shadow_dance_y00_f009.png",
+      "shadow_dance_y00_f010.png",
+      "shadow_dance_y00_f011.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "shadow_dance_y01_f000.png",
+      "shadow_dance_y01_f001.png",
+      "shadow_dance_y01_f002.png",
+      "shadow_dance_y01_f003.png",
+      "shadow_dance_y01_f004.png",
+      "shadow_dance_y01_f005.png",
+      "shadow_dance_y01_f006.png",
+      "shadow_dance_y01_f007.png",
+      "shadow_dance_y01_f008.png",
+      "shadow_dance_y01_f009.png",
+      "shadow_dance_y01_f010.png",
+      "shadow_dance_y01_f011.png"
+     ]
+    }
+   ],
+   "duration": 0.8,
+   "fps": 15.0
+  },
+  "death": {
+   "frames": 16,
+   "loop": false,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "death_y00_f000.png",
+      "death_y00_f001.png",
+      "death_y00_f002.png",
+      "death_y00_f003.png",
+      "death_y00_f004.png",
+      "death_y00_f005.png",
+      "death_y00_f006.png",
+      "death_y00_f007.png",
+      "death_y00_f008.png",
+      "death_y00_f009.png",
+      "death_y00_f010.png",
+      "death_y00_f011.png",
+      "death_y00_f012.png",
+      "death_y00_f013.png",
+      "death_y00_f014.png",
+      "death_y00_f015.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "death_y01_f000.png",
+      "death_y01_f001.png",
+      "death_y01_f002.png",
+      "death_y01_f003.png",
+      "death_y01_f004.png",
+      "death_y01_f005.png",
+      "death_y01_f006.png",
+      "death_y01_f007.png",
+      "death_y01_f008.png",
+      "death_y01_f009.png",
+      "death_y01_f010.png",
+      "death_y01_f011.png",
+      "death_y01_f012.png",
+      "death_y01_f013.png",
+      "death_y01_f014.png",
+      "death_y01_f015.png"
+     ]
+    }
+   ],
+   "duration": 1.467,
+   "fps": 10.91
+  },
+  "victory": {
+   "frames": 20,
+   "loop": true,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "victory_y00_f000.png",
+      "victory_y00_f001.png",
+      "victory_y00_f002.png",
+      "victory_y00_f003.png",
+      "victory_y00_f004.png",
+      "victory_y00_f005.png",
+      "victory_y00_f006.png",
+      "victory_y00_f007.png",
+      "victory_y00_f008.png",
+      "victory_y00_f009.png",
+      "victory_y00_f010.png",
+      "victory_y00_f011.png",
+      "victory_y00_f012.png",
+      "victory_y00_f013.png",
+      "victory_y00_f014.png",
+      "victory_y00_f015.png",
+      "victory_y00_f016.png",
+      "victory_y00_f017.png",
+      "victory_y00_f018.png",
+      "victory_y00_f019.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "victory_y01_f000.png",
+      "victory_y01_f001.png",
+      "victory_y01_f002.png",
+      "victory_y01_f003.png",
+      "victory_y01_f004.png",
+      "victory_y01_f005.png",
+      "victory_y01_f006.png",
+      "victory_y01_f007.png",
+      "victory_y01_f008.png",
+      "victory_y01_f009.png",
+      "victory_y01_f010.png",
+      "victory_y01_f011.png",
+      "victory_y01_f012.png",
+      "victory_y01_f013.png",
+      "victory_y01_f014.png",
+      "victory_y01_f015.png",
+      "victory_y01_f016.png",
+      "victory_y01_f017.png",
+      "victory_y01_f018.png",
+      "victory_y01_f019.png"
+     ]
+    }
+   ],
+   "duration": 3.6,
+   "fps": 5.56
+  }
+ }
+}

@@ -1,0 +1,54 @@
+{
+  "name": "dsh-dota2-pet",
+  "version": "0.1.0",
+  "description": "Dota 2 桌宠：读本机游戏模型/动作，配好账号后按你最近的英雄出场",
+  "type": "module",
+  "license": "MIT",
+  "private": false,
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "lib",
+    "assets",
+    "icon.svg",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check client.js && node --check lib/find-dota.mjs",
+    "test": "node --test",
+    "prepublishOnly": "npm run check && npm test"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": ["@deepseek-ai/dsh-client-ui-conversation"]
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.0"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dota2",
+    "desktop-pet",
+    "deepseek-harness"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nortrom/dsh-dota2-pet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nortrom/dsh-dota2-pet/issues"
+  },
+  "homepage": "https://github.com/Nortrom/dsh-dota2-pet#readme",
+  "author": "Nortrom"
+}

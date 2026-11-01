@@ -1,0 +1,26 @@
+# 依赖与构建产物
+node_modules/
+pnpm-lock.yaml
+*.tgz
+
+# 运行期产生的日志（不属于源码）
+_diag.log
+**/_diag.log
+**/_window.log
+
+# 烘焙工具链的中间产物：模型导出与游戏数据（体积大、且属于 Valve 素材）
+tools/bake/data/
+tools/bake/export/
+tools/bake/export2/
+tools/bake/wardrobe/
+tools/bake/*.glb
+tools/bake/**/*.glb
+tools/bake/tools/
+tools/bake/*.png
+tools/bake/*.jpg
+
+# 本机配置与备份
+*.bak
+*.bak-*
+.DS_Store
+Thumbs.db

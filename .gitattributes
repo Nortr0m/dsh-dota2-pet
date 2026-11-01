@@ -1,0 +1,14 @@
+# 统一行尾；PowerShell 脚本必须原样保留（UTF-8 BOM + CRLF），否则 Windows
+# PowerShell 5.1 会按 ANSI 读取，中文字符串会直接把语法读崩。
+* text=auto eol=lf
+*.ps1 -text
+*.vtxt -text
+
+# 二进制素材
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.glb binary
+*.vpk binary
