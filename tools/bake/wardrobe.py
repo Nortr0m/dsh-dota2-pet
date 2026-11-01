@@ -82,12 +82,18 @@ class Wardrobe(object):
         out.sort(key=lambda x: x["id"])
         return out
 
-    def loadout(self, hero, set_id=None, slots=None, defaults=False):
-        """返回 [{slot,name,model,source}]，每槽位一件。"""
+    def loadout(self, hero, set_id=None, slots=None, defaults=False, model_dir=None):
+        """返回 [{slot,name,model,source}]，每槽位一件。
+
+        model_dir：本体模型所在目录名。英雄 slug 与模型目录**不一定同名**
+        （司夜刺客 slug 是 nyx_assassin，模型却在 models/heroes/nerubian_assassin/），
+        所以默认部件不能靠 slug 猜。不给就退回用 slug。
+        """
         rows = []
         if defaults or set_id == "default":
+            prefix = "models/heroes/%s/" % (model_dir or hero)
             for it in self.lib.hero_items(hero):
-                if it["model"] and it["model"].startswith("models/heroes/%s/" % hero):
+                if it["model"] and it["model"].startswith(prefix):
                     rows.append({"slot": it["slot"], "name": it["name"],
                                  "model": it["model"], "source": "默认"})
         if set_id and set_id not in ("default",):
@@ -190,6 +196,8 @@ def main():
     a = ap.parse_args()
 
     w = Wardrobe(a.items)
+    # 本体模型目录名（可能不等于英雄 slug，例如 nyx_assassin -> nerubian_assassin）
+    model_dir = os.path.basename(a.base or "").replace(".glb", "") or a.hero
 
     if a.list_sets:
         sets = w.sets_for(a.hero)
@@ -208,7 +216,7 @@ def main():
             if nm == "base":
                 lab = "本体（无饰品）"
             elif nm == "default":
-                rows = w.loadout(a.hero, defaults=True)
+                rows = w.loadout(a.hero, defaults=True, model_dir=model_dir)
                 lab = "默认套装"
                 parts = [export_model(r["model"], cache=os.path.join(HERE, "wardrobe"))[0]
                          for r in rows]
@@ -230,7 +238,7 @@ def main():
         print("已输出 %s" % a.out)
         return
 
-    rows = w.loadout(a.hero, set_id=a.set or "default")
+    rows = w.loadout(a.hero, set_id=a.set or "default", model_dir=model_dir)
     parts = []
     for r in rows:
         glb, ok = export_model(r["model"], cache=os.path.join(HERE, "wardrobe"))

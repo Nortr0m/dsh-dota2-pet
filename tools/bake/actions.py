@@ -44,6 +44,14 @@ CATS = [
     ("展示/嘲讽", ("loadout", "portrait", "taunt", "laugh", "ACT_DOTA_TAUNT")),
 ]
 
+# 分类的 ASCII 版：PowerShell 桌面窗口脚本必须保持纯 ASCII（5.1 按 ANSI 读无 BOM 脚本），
+# 所以 manifest 里中英两份都写，前端用中文、桌宠独立窗口用 ASCII。
+CAT_EN = {
+    "待机": "idle", "移动": "move", "攻击": "attack", "施法": "cast",
+    "技能": "skill", "受击": "hit", "死亡": "death", "胜利": "victory",
+    "出生/传送": "spawn", "展示/嘲讽": "show", "其他": "other",
+}
+
 
 def categorize(name, acts):
     hay = (' '.join(acts) + ' ' + (name or '')).lower()
@@ -148,18 +156,96 @@ BAKE_SET = [
 ]
 
 
-def bake(m, outdir, items=None, size=220, yaw=25.0, pitch=6.0, yaws=1, loops=None, log=print):
-    """把动作烘成帧序列 + manifest.json（桌宠包内置素材，离线渲染一次即可）。"""
+def pick_bake_set(lib, fps=16):
+    """按英雄自己的动作库挑一套通用动作（各英雄动作名不同，不能写死）。
+
+    挑选顺序：先按常见名字精确命中，命不中再在该类别里取**时长最短**的
+    （短动作更适合循环与反复播放；也让英雄之间风格一致）。
+    排除 versus_attack / overkilled 这类 40 秒级的特殊动作，以及 generic_channel。
+    """
+    rows = [r for r in lib.playable() if r["in_glb"]]
+
+    def by_name(names):
+        for n in names:
+            for r in rows:
+                if r["name"] == n:
+                    return r
+        return None
+
+    def by_cat(cats, shortest=True, exclude=()):
+        c = [r for r in rows if r["category"] in cats
+             and not any(x in r["name"] for x in exclude)]
+        if not c:
+            return None
+        c.sort(key=lambda r: (r["duration"] or 0), reverse=not shortest)
+        return c[0]
+
+    picks = []
+    # 待机 / 移动 / 攻击
+    picks.append(by_name(['idle_anim', 'idle', 'idle2_anim']) or by_cat(('待机',)))
+    picks.append(by_name(['@run', 'run_anim', 'run', '@run_anim']) or by_cat(('移动',)))
+    picks.append(by_name(['attack_anim', 'attack1_anim', 'attack2_anim', 'attack'])
+                 or by_cat(('攻击',), exclude=('versus',)))
+
+    # 专属技能：先技能类，不够再从施法类补（很多英雄技能被归在施法里）
+    # 归一化去重：hero 常有 shadow_dance / @@shadow_dance_latch / xxx_injured 这类同源变体
+    def norm(n):
+        n = n.lstrip('@_')
+        if n.endswith('_anim'):
+            n = n[:-5]
+        for junk in ('injured', 'latch', 'loadout', 'effigy'):
+            n = n.replace(junk, '').replace('__', '_').strip('_')
+        return n
+
+    abil = [r for r in rows if r["category"] == "技能"]
+    abil += [r for r in rows if r["category"] == "施法"
+             and 'channel' not in r["name"] and not r["loop"]]
+    abil.sort(key=lambda r: (r["duration"] or 0))
+    picked_keys, abil2 = set(), []
+    for r in abil:
+        k = norm(r["name"])
+        if not k or k in picked_keys:
+            continue
+        picked_keys.add(k)
+        abil2.append(r)
+    picks += abil2[:2]
+
+    # 死亡 / 胜利
+    picks.append(by_name(['death', 'dieBack', 'dieForward', 'die'])
+                 or by_cat(('死亡',), exclude=('overkilled',)))
+    picks.append(by_name(['victory', 'victory_loop_anim', 'victory_loop'])
+                 or by_cat(('胜利',)))
+
+    out, seen = [], set()
+    for r in picks:
+        if not r or r["name"] in seen:
+            continue
+        seen.add(r["name"])
+        n = int(round((r["duration"] or 1.0) * fps))
+        out.append((r["name"], max(12, min(32, n))))
+    return out
+
+
+def bake(m, outdir, items=None, size=220, yaw=25.0, pitch=6.0, yaws=1, loops=None,
+         cats=None, log=print):
+    """把动作烘成帧序列 + manifest.json（桌宠包内置素材，离线渲染一次即可）。
+
+    manifest 里除了帧与帧率，还写入分类（中文给界面 / ASCII 给必须保持纯 ASCII 的
+    PowerShell 桌面窗口脚本），这样前端右键菜单可以按英雄实际拥有的动作动态生成。
+    """
     import json as _json
     items = items or BAKE_SET
     loops = loops or {}
+    cats = cats or {}
     os.makedirs(outdir, exist_ok=True)
     manifest = {"size": size, "pitch": pitch, "yaws": yaws, "actions": {}}
     for anim, n in items:
         if anim not in m.anims:
             log("跳过（模型里没有）: %s" % anim)
             continue
-        entry = {"frames": n, "loop": bool(loops.get(anim)), "yaws": []}
+        cat = cats.get(anim) or '其他'
+        entry = {"frames": n, "loop": bool(loops.get(anim)),
+                 "category": cat, "categoryEn": CAT_EN.get(cat, 'other'), "yaws": []}
         for yi in range(max(1, yaws)):
             yaw_i = yaw if yaws == 1 else (-180.0 + 360.0 * yi / yaws)
             poses = frames_of(m, anim, n, exclusive=True)
@@ -297,12 +383,17 @@ def read_item_slots(hero_file):
     return out
 
 
-def default_parts(hero, items_path):
-    """导出该英雄的默认部件（兜帽/披风/护腕/肩甲/武器）GLB。"""
+def default_parts(hero, items_path, model_dir=None):
+    """导出该英雄的默认部件（兜帽/披风/护腕/肩甲/武器）GLB。
+
+    model_dir：本体模型所在目录名。英雄 slug 不一定等于模型目录
+    （司夜刺客 nyx_assassin 的模型在 models/heroes/nerubian_assassin/），
+    所以从本体 GLB 的文件名推最稳。
+    """
     import wardrobe
     w = wardrobe.Wardrobe(items_path)
     out = []
-    for r in w.loadout(hero, defaults=True):
+    for r in w.loadout(hero, defaults=True, model_dir=model_dir):
         glb, ok = wardrobe.export_model(r['model'])
         if ok:
             out.append(glb)
@@ -333,11 +424,14 @@ def main():
     ap.add_argument("--hero-file", default=os.path.join(HERE, "data", "npc_dota_hero_slark.txt"))
     ap.add_argument("--abilities", action="store_true")
     ap.add_argument("--bake-dir", default=None, help="烘焙内置动作帧到这个目录")
+    ap.add_argument("--bake-set", default='auto', choices=['auto', 'slark'],
+                    help="auto=按该英雄动作库自动挑一套；slark=沿用斯拉克那套动作名")
     ap.add_argument("--bake-yaws", type=int, default=2)
     ap.add_argument("--bake-size", type=int, default=220)
     a = ap.parse_args()
 
-    parts = default_parts(a.hero, a.items) if a.parts == "default" else []
+    parts = default_parts(a.hero, a.items,
+                          model_dir=os.path.basename(a.glb).replace('.glb', '')) if a.parts == "default" else []
     if a.parts == "default":
         print("并上默认部件 %d 件" % len(parts))
     lib = ActionLib(a.glb, a.aseq, parts=parts)
@@ -390,7 +484,9 @@ def main():
 
     if a.bake_dir:
         loops = {r["name"]: r["loop"] for r in lib.seqs}
-        bake(lib.m, a.bake_dir, size=a.bake_size, yaws=a.bake_yaws, loops=loops)
+        items = BAKE_SET if a.bake_set == 'slark' else pick_bake_set(lib)
+        print("烘焙动作集：%s" % (', '.join('%s×%d' % (n, c) for n, c in items) or '（空）'))
+        bake(lib.m, a.bake_dir, items=items, size=a.bake_size, yaws=a.bake_yaws, loops=loops)
         print("内置动作帧 -> %s" % a.bake_dir)
 
     if a.sheet:

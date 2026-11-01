@@ -164,17 +164,25 @@ window.__ModuleLoader__.load({
         return () => { alive = false; };
       }, [hero]);
 
+      /* 该英雄的待机动作名：各英雄动作名不同，不能写死 idle_anim */
+      const idleName = React.useMemo(() => {
+        const acts = (manifest && manifest.actions) || {};
+        const names = Object.keys(acts);
+        if (!names.length) return null;
+        return names.find((n) => acts[n].category === '待机')
+            || (acts['idle_anim'] ? 'idle_anim' : names[0]);
+      }, [manifest]);
+
       const clip = React.useMemo(() => {
         if (!manifest || !manifest.actions) return null;
-        const a = manifest.actions[action] || manifest.actions['idle_anim'];
+        const acts = manifest.actions;
+        const name = acts[action] ? action : idleName;
+        const a = acts[name];
         if (!a) return null;
         const yaw = a.yaws && a.yaws[0];
         if (!yaw || !yaw.files || !yaw.files.length) return null;
-        return { name: action in manifest.actions ? action : 'idle_anim', files: yaw.files,
-                 fps: a.fps || 12, loop: Boolean(a.loop) };
-      }, [manifest, action]);
-
-      const copy = (window.localStorage.getItem('d2p') === 'cn') || true;   // 保留扩展位
+        return { name, files: yaw.files, fps: a.fps || 12, loop: Boolean(a.loop) };
+      }, [manifest, action, idleName]);
 
       /* 预加载当前动作的所有帧 */
       React.useEffect(() => {
@@ -202,14 +210,14 @@ window.__ModuleLoader__.load({
             if (clip.loop) i = 0;
             else {
               window.clearInterval(timer);
-              setAction('idle_anim');
+              if (idleName) setAction(idleName);   // 播完回到该英雄自己的待机动作
               return;
             }
           }
           setFrame(i);
         }, step);
         return () => { stop = true; window.clearInterval(timer); };
-      }, [clip, p.enabled]);
+      }, [clip, p.enabled, idleName]);
 
       /* 拖动 */
       function onDown(e) {
@@ -233,9 +241,12 @@ window.__ModuleLoader__.load({
         if (d && !d.moved) speak();
       }
       function speak() {
-        if (!manifest) return;
-        const pool = ['attack_anim', 'pounce_anim', 'dark_pact_anim', 'victory'];
-        const has = pool.filter((x) => manifest.actions && manifest.actions[x]);
+        if (!manifest || !manifest.actions) return;
+        // 台词配一个"有表现力"的动作：优先技能/施法/攻击/胜利，各英雄动作名不同所以按分类挑
+        const acts = manifest.actions;
+        const fun = ['技能', '施法', '攻击', '胜利'];
+        const pool = Object.keys(acts).filter((n) => fun.indexOf(acts[n].category) >= 0 && !acts[n].loop);
+        const has = pool.length ? pool : Object.keys(acts);
         if (has.length) setAction(has[Math.floor(Math.random() * has.length)]);
         if (p.bubble) {
           setLine(LINES[Math.floor(Math.random() * LINES.length)]);
@@ -282,14 +293,28 @@ window.__ModuleLoader__.load({
           onMouseLeave: () => setMenu(null)
         },
           menuItem('说句话', () => { setMenu(null); speak(); }),
-          menuItem('待机', () => { setMenu(null); setAction('idle_anim'); }),
-          menuItem('跑动', () => { setMenu(null); setAction('@run'); }),
+          // 动作列表按当前英雄的 manifest 动态生成（各英雄动作名不同，不能写死）
+          ...actionItems(manifest, clip && clip.name, (n) => { setMenu(null); setAction(n); }),
           menuItem('放大', () => { setMenu(null); setPref({ scale: Math.min(2.5, p.scale + 0.2) }); }),
           menuItem('缩小', () => { setMenu(null); setPref({ scale: Math.max(0.5, p.scale - 0.2) }); }),
-          menuItem('贴到桌面（Windows）', () => { setMenu(null); windowStart({ hero, scale: p.scale, action }); }),
+          menuItem('贴到桌面（Windows）', () => { setMenu(null); windowStart({ hero, scale: p.scale, action: clip && clip.name }); }),
           menuItem('藏起来', () => { setMenu(null); setPref({ enabled: false }); })
         ) : null
       );
+    }
+
+    /** 把该英雄的动作渲染成菜单项：显示分类，重名时补动作名 */
+    function actionItems(manifest, current, onPick, max) {
+      const acts = (manifest && manifest.actions) || {};
+      const names = Object.keys(acts).filter((n) => n.slice(0, 2) !== '@@').slice(0, max || 9);
+      const seen = {};
+      return names.map((n) => {
+        const cat = acts[n].category || n;
+        seen[cat] = (seen[cat] || 0) + 1;
+        const label = (current === n ? '● ' : '') + cat +
+          (seen[cat] > 1 || !acts[n].category ? '（' + n.replace(/^@/, '').replace(/_anim$/, '') + '）' : '');
+        return menuItem(label, () => onPick(n));
+      });
     }
 
     function menuItem(label, onClick) {
@@ -423,7 +448,7 @@ window.__ModuleLoader__.load({
                   title: slugHero ? '本插件内置了这个英雄的动作帧' : '暂无内置动作帧，可选但要等后续版本',
                   style: { ...btn, padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 92,
                            opacity: slugHero ? 1 : 0.55 },
-                  onClick: () => { if (slugHero) setPref({ hero: slug, action: 'idle_anim' }); }
+                  onClick: () => { if (slugHero) setPref({ hero: slug, action: '' }); }
                 },
                   heroPortrait(x.heroId) ? h('img', { src: heroPortrait(x.heroId), alt: '',
                     style: { width: 82, height: 46, objectFit: 'cover', borderRadius: 5 } }) : null,
@@ -463,7 +488,7 @@ window.__ModuleLoader__.load({
           h('div', { style: { display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' } },
             ...heroes.map((x) => h('button', {
               key: x.hero, style: { ...btn, borderColor: p.hero === x.hero ? '#f0cd82' : '#6b4a20' },
-              onClick: () => setPref({ hero: x.hero, action: 'idle_anim' })
+              onClick: () => setPref({ hero: x.hero, action: '' })
             }, x.hero))
           ),
           h('div', { style: { marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10 } },
@@ -471,7 +496,7 @@ window.__ModuleLoader__.load({
             h('div', { style: hint }, '另起一个置顶、无边框、真透明的窗口，桌宠就能浮在桌面上，DSH 最小化也还在。'),
             h('div', { style: { display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' } },
               h('button', { style: btn, onClick: async () => {
-                const r = await windowStart({ hero: p.hero, scale: p.scale, action: 'idle_anim' });
+                const r = await windowStart({ hero: p.hero, scale: p.scale, action: '' });
                 setWin(r);
               } }, '打开桌面窗口'),
               h('button', { style: btn, onClick: async () => { setWin(await windowStop()); } }, '关闭'),

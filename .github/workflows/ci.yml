@@ -28,10 +28,11 @@ jobs:
           node --check client.js
           node --check lib/find-dota.mjs
 
-      - name: 冒烟测试（离线，不需要 DSH 与 Dota 2）
+      # 冒烟测试（宿主半路由与账号换算）+ 内置动作帧完整性，后者自动遍历所有英雄
+      - name: 测试
         run: node --test
 
-      - name: 校验 package.json 的 dsh 字段与 patch 文件
+      - name: 校验 package.json 的 dsh 字段与 files 列表
         run: |
           node -e "
           const fs = require('fs');
@@ -41,21 +42,4 @@ jobs:
           if (!p.dsh.client || p.dsh.client.platform !== 'web') throw new Error('dsh.client 配置缺失');
           for (const f of p.files || []) if (!fs.existsSync(f)) throw new Error('files 里列了不存在的路径 - ' + f);
           console.log('package.json OK');
-          "
-
-      - name: 内置动作帧完整性（manifest 与文件一一对应）
-        run: |
-          node -e "
-          const fs = require('fs'), path = require('path');
-          const dir = 'assets/frames/slark';
-          const m = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
-          let n = 0, miss = [];
-          for (const [name, a] of Object.entries(m.actions)) {
-            for (const y of a.yaws) {
-              if (y.files.length !== a.frames) throw new Error(name + ' 帧数不符');
-              for (const f of y.files) { n++; if (!fs.existsSync(path.join(dir, f))) miss.push(f); }
-            }
-          }
-          if (miss.length) throw new Error('缺帧 - ' + miss.slice(0, 5).join(','));
-          console.log('帧文件齐全 ' + n);
           "

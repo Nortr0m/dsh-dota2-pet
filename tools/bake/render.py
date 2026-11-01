@@ -186,9 +186,12 @@ class Model:
             if bone_pos is not None and len(bone_pos):
                 d = ((pm.POS[:, None, :] - bone_pos[None, :, :]) ** 2).sum(axis=2)
                 near = d.argmin(axis=1)
-                js = self.skin_joints if isinstance(self.skin_joints, np.ndarray) else np.array(self.skin_joints)
-                jm = js[near]
-                j4 = np.stack([jm, np.zeros(n, np.int64), np.zeros(n, np.int64), np.zeros(n, np.int64)], axis=1)
+                # JOINTS_0 要的是"骨骼在 skin.joints 里的槽位序号"，不是节点 id。
+                # bone_pos 是按 skin_joints 顺序建的，所以 argmin 的结果本来就是槽位序号。
+                # 这里曾经错写成 skin_joints[near]（节点 id），斯拉克恰好槽位与节点 id 都小于
+                # 关节数、没抛异常但**绑错了骨骼**；食人魔节点更多就直接越界崩了。
+                j4 = np.stack([near.astype(np.int64), np.zeros(n, np.int64),
+                               np.zeros(n, np.int64), np.zeros(n, np.int64)], axis=1)
                 w4 = np.zeros((n, 4))
                 w4[:, 0] = 1.0
             else:

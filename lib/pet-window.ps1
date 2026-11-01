@@ -141,12 +141,21 @@ $window.Content = $image
 # left drag moves the window
 $window.Add_MouseLeftButtonDown({ try { $window.DragMove() } catch { } })
 
-# right click menu: switch action / scale / quit
+# right click menu: action list is built from this hero's manifest (action names differ
+# per hero), plus scale / quit. categoryEn keeps the labels ASCII.
 $menu = New-Object System.Windows.Controls.ContextMenu
-foreach ($name in @('idle_anim', '@run', 'attack_anim', 'pounce_anim', 'dark_pact_anim', '@shadow_dance', 'victory')) {
-  if (-not $manifest.actions.$name) { continue }
+$actionNames = @()
+foreach ($prop in $manifest.actions.PSObject.Properties) {
+  if ($prop.Name.StartsWith('@@')) { continue }
+  $actionNames += $prop.Name
+}
+Write-Log ('actions in manifest: ' + ($actionNames -join ', '))
+foreach ($name in $actionNames) {
+  $entry = $manifest.actions.$name
+  $cat = 'action'
+  if ($entry.categoryEn) { $cat = $entry.categoryEn }
   $mi = New-Object System.Windows.Controls.MenuItem
-  $mi.Header = $name
+  $mi.Header = $cat + '  ' + $name
   $mi.Tag = $name
   $mi.Add_Click({
     param($sender, $evt)

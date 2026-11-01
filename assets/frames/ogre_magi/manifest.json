@@ -1,0 +1,411 @@
+{
+ "size": 220,
+ "pitch": 6.0,
+ "yaws": 2,
+ "actions": {
+  "idle_anim": {
+   "frames": 32,
+   "loop": true,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "idle_anim_y00_f000.png",
+      "idle_anim_y00_f001.png",
+      "idle_anim_y00_f002.png",
+      "idle_anim_y00_f003.png",
+      "idle_anim_y00_f004.png",
+      "idle_anim_y00_f005.png",
+      "idle_anim_y00_f006.png",
+      "idle_anim_y00_f007.png",
+      "idle_anim_y00_f008.png",
+      "idle_anim_y00_f009.png",
+      "idle_anim_y00_f010.png",
+      "idle_anim_y00_f011.png",
+      "idle_anim_y00_f012.png",
+      "idle_anim_y00_f013.png",
+      "idle_anim_y00_f014.png",
+      "idle_anim_y00_f015.png",
+      "idle_anim_y00_f016.png",
+      "idle_anim_y00_f017.png",
+      "idle_anim_y00_f018.png",
+      "idle_anim_y00_f019.png",
+      "idle_anim_y00_f020.png",
+      "idle_anim_y00_f021.png",
+      "idle_anim_y00_f022.png",
+      "idle_anim_y00_f023.png",
+      "idle_anim_y00_f024.png",
+      "idle_anim_y00_f025.png",
+      "idle_anim_y00_f026.png",
+      "idle_anim_y00_f027.png",
+      "idle_anim_y00_f028.png",
+      "idle_anim_y00_f029.png",
+      "idle_anim_y00_f030.png",
+      "idle_anim_y00_f031.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "idle_anim_y01_f000.png",
+      "idle_anim_y01_f001.png",
+      "idle_anim_y01_f002.png",
+      "idle_anim_y01_f003.png",
+      "idle_anim_y01_f004.png",
+      "idle_anim_y01_f005.png",
+      "idle_anim_y01_f006.png",
+      "idle_anim_y01_f007.png",
+      "idle_anim_y01_f008.png",
+      "idle_anim_y01_f009.png",
+      "idle_anim_y01_f010.png",
+      "idle_anim_y01_f011.png",
+      "idle_anim_y01_f012.png",
+      "idle_anim_y01_f013.png",
+      "idle_anim_y01_f014.png",
+      "idle_anim_y01_f015.png",
+      "idle_anim_y01_f016.png",
+      "idle_anim_y01_f017.png",
+      "idle_anim_y01_f018.png",
+      "idle_anim_y01_f019.png",
+      "idle_anim_y01_f020.png",
+      "idle_anim_y01_f021.png",
+      "idle_anim_y01_f022.png",
+      "idle_anim_y01_f023.png",
+      "idle_anim_y01_f024.png",
+      "idle_anim_y01_f025.png",
+      "idle_anim_y01_f026.png",
+      "idle_anim_y01_f027.png",
+      "idle_anim_y01_f028.png",
+      "idle_anim_y01_f029.png",
+      "idle_anim_y01_f030.png",
+      "idle_anim_y01_f031.png"
+     ]
+    }
+   ],
+   "duration": 2.933,
+   "fps": 10.91,
+   "category": "待机",
+   "categoryEn": "idle"
+  },
+  "run_anim": {
+   "frames": 12,
+   "loop": true,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "run_anim_y00_f000.png",
+      "run_anim_y00_f001.png",
+      "run_anim_y00_f002.png",
+      "run_anim_y00_f003.png",
+      "run_anim_y00_f004.png",
+      "run_anim_y00_f005.png",
+      "run_anim_y00_f006.png",
+      "run_anim_y00_f007.png",
+      "run_anim_y00_f008.png",
+      "run_anim_y00_f009.png",
+      "run_anim_y00_f010.png",
+      "run_anim_y00_f011.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "run_anim_y01_f000.png",
+      "run_anim_y01_f001.png",
+      "run_anim_y01_f002.png",
+      "run_anim_y01_f003.png",
+      "run_anim_y01_f004.png",
+      "run_anim_y01_f005.png",
+      "run_anim_y01_f006.png",
+      "run_anim_y01_f007.png",
+      "run_anim_y01_f008.png",
+      "run_anim_y01_f009.png",
+      "run_anim_y01_f010.png",
+      "run_anim_y01_f011.png"
+     ]
+    }
+   ],
+   "duration": 0.767,
+   "fps": 15.65,
+   "category": "移动",
+   "categoryEn": "move"
+  },
+  "attack1_anim": {
+   "frames": 14,
+   "loop": false,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "attack1_anim_y00_f000.png",
+      "attack1_anim_y00_f001.png",
+      "attack1_anim_y00_f002.png",
+      "attack1_anim_y00_f003.png",
+      "attack1_anim_y00_f004.png",
+      "attack1_anim_y00_f005.png",
+      "attack1_anim_y00_f006.png",
+      "attack1_anim_y00_f007.png",
+      "attack1_anim_y00_f008.png",
+      "attack1_anim_y00_f009.png",
+      "attack1_anim_y00_f010.png",
+      "attack1_anim_y00_f011.png",
+      "attack1_anim_y00_f012.png",
+      "attack1_anim_y00_f013.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "attack1_anim_y01_f000.png",
+      "attack1_anim_y01_f001.png",
+      "attack1_anim_y01_f002.png",
+      "attack1_anim_y01_f003.png",
+      "attack1_anim_y01_f004.png",
+      "attack1_anim_y01_f005.png",
+      "attack1_anim_y01_f006.png",
+      "attack1_anim_y01_f007.png",
+      "attack1_anim_y01_f008.png",
+      "attack1_anim_y01_f009.png",
+      "attack1_anim_y01_f010.png",
+      "attack1_anim_y01_f011.png",
+      "attack1_anim_y01_f012.png",
+      "attack1_anim_y01_f013.png"
+     ]
+    }
+   ],
+   "duration": 0.867,
+   "fps": 16.15,
+   "category": "攻击",
+   "categoryEn": "attack"
+  },
+  "cast_fire_shield": {
+   "frames": 13,
+   "loop": false,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "cast_fire_shield_y00_f000.png",
+      "cast_fire_shield_y00_f001.png",
+      "cast_fire_shield_y00_f002.png",
+      "cast_fire_shield_y00_f003.png",
+      "cast_fire_shield_y00_f004.png",
+      "cast_fire_shield_y00_f005.png",
+      "cast_fire_shield_y00_f006.png",
+      "cast_fire_shield_y00_f007.png",
+      "cast_fire_shield_y00_f008.png",
+      "cast_fire_shield_y00_f009.png",
+      "cast_fire_shield_y00_f010.png",
+      "cast_fire_shield_y00_f011.png",
+      "cast_fire_shield_y00_f012.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "cast_fire_shield_y01_f000.png",
+      "cast_fire_shield_y01_f001.png",
+      "cast_fire_shield_y01_f002.png",
+      "cast_fire_shield_y01_f003.png",
+      "cast_fire_shield_y01_f004.png",
+      "cast_fire_shield_y01_f005.png",
+      "cast_fire_shield_y01_f006.png",
+      "cast_fire_shield_y01_f007.png",
+      "cast_fire_shield_y01_f008.png",
+      "cast_fire_shield_y01_f009.png",
+      "cast_fire_shield_y01_f010.png",
+      "cast_fire_shield_y01_f011.png",
+      "cast_fire_shield_y01_f012.png"
+     ]
+    }
+   ],
+   "duration": 0.8,
+   "fps": 16.25,
+   "category": "施法",
+   "categoryEn": "cast"
+  },
+  "cast2_ignite_anim": {
+   "frames": 15,
+   "loop": false,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "cast2_ignite_anim_y00_f000.png",
+      "cast2_ignite_anim_y00_f001.png",
+      "cast2_ignite_anim_y00_f002.png",
+      "cast2_ignite_anim_y00_f003.png",
+      "cast2_ignite_anim_y00_f004.png",
+      "cast2_ignite_anim_y00_f005.png",
+      "cast2_ignite_anim_y00_f006.png",
+      "cast2_ignite_anim_y00_f007.png",
+      "cast2_ignite_anim_y00_f008.png",
+      "cast2_ignite_anim_y00_f009.png",
+      "cast2_ignite_anim_y00_f010.png",
+      "cast2_ignite_anim_y00_f011.png",
+      "cast2_ignite_anim_y00_f012.png",
+      "cast2_ignite_anim_y00_f013.png",
+      "cast2_ignite_anim_y00_f014.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "cast2_ignite_anim_y01_f000.png",
+      "cast2_ignite_anim_y01_f001.png",
+      "cast2_ignite_anim_y01_f002.png",
+      "cast2_ignite_anim_y01_f003.png",
+      "cast2_ignite_anim_y01_f004.png",
+      "cast2_ignite_anim_y01_f005.png",
+      "cast2_ignite_anim_y01_f006.png",
+      "cast2_ignite_anim_y01_f007.png",
+      "cast2_ignite_anim_y01_f008.png",
+      "cast2_ignite_anim_y01_f009.png",
+      "cast2_ignite_anim_y01_f010.png",
+      "cast2_ignite_anim_y01_f011.png",
+      "cast2_ignite_anim_y01_f012.png",
+      "cast2_ignite_anim_y01_f013.png",
+      "cast2_ignite_anim_y01_f014.png"
+     ]
+    }
+   ],
+   "duration": 0.914,
+   "fps": 16.41,
+   "category": "施法",
+   "categoryEn": "cast"
+  },
+  "dieBack": {
+   "frames": 26,
+   "loop": false,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "dieBack_y00_f000.png",
+      "dieBack_y00_f001.png",
+      "dieBack_y00_f002.png",
+      "dieBack_y00_f003.png",
+      "dieBack_y00_f004.png",
+      "dieBack_y00_f005.png",
+      "dieBack_y00_f006.png",
+      "dieBack_y00_f007.png",
+      "dieBack_y00_f008.png",
+      "dieBack_y00_f009.png",
+      "dieBack_y00_f010.png",
+      "dieBack_y00_f011.png",
+      "dieBack_y00_f012.png",
+      "dieBack_y00_f013.png",
+      "dieBack_y00_f014.png",
+      "dieBack_y00_f015.png",
+      "dieBack_y00_f016.png",
+      "dieBack_y00_f017.png",
+      "dieBack_y00_f018.png",
+      "dieBack_y00_f019.png",
+      "dieBack_y00_f020.png",
+      "dieBack_y00_f021.png",
+      "dieBack_y00_f022.png",
+      "dieBack_y00_f023.png",
+      "dieBack_y00_f024.png",
+      "dieBack_y00_f025.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "dieBack_y01_f000.png",
+      "dieBack_y01_f001.png",
+      "dieBack_y01_f002.png",
+      "dieBack_y01_f003.png",
+      "dieBack_y01_f004.png",
+      "dieBack_y01_f005.png",
+      "dieBack_y01_f006.png",
+      "dieBack_y01_f007.png",
+      "dieBack_y01_f008.png",
+      "dieBack_y01_f009.png",
+      "dieBack_y01_f010.png",
+      "dieBack_y01_f011.png",
+      "dieBack_y01_f012.png",
+      "dieBack_y01_f013.png",
+      "dieBack_y01_f014.png",
+      "dieBack_y01_f015.png",
+      "dieBack_y01_f016.png",
+      "dieBack_y01_f017.png",
+      "dieBack_y01_f018.png",
+      "dieBack_y01_f019.png",
+      "dieBack_y01_f020.png",
+      "dieBack_y01_f021.png",
+      "dieBack_y01_f022.png",
+      "dieBack_y01_f023.png",
+      "dieBack_y01_f024.png",
+      "dieBack_y01_f025.png"
+     ]
+    }
+   ],
+   "duration": 1.6,
+   "fps": 16.25,
+   "category": "死亡",
+   "categoryEn": "death"
+  },
+  "victory_loop_anim": {
+   "frames": 20,
+   "loop": true,
+   "yaws": [
+    {
+     "yaw": -180.0,
+     "files": [
+      "victory_loop_anim_y00_f000.png",
+      "victory_loop_anim_y00_f001.png",
+      "victory_loop_anim_y00_f002.png",
+      "victory_loop_anim_y00_f003.png",
+      "victory_loop_anim_y00_f004.png",
+      "victory_loop_anim_y00_f005.png",
+      "victory_loop_anim_y00_f006.png",
+      "victory_loop_anim_y00_f007.png",
+      "victory_loop_anim_y00_f008.png",
+      "victory_loop_anim_y00_f009.png",
+      "victory_loop_anim_y00_f010.png",
+      "victory_loop_anim_y00_f011.png",
+      "victory_loop_anim_y00_f012.png",
+      "victory_loop_anim_y00_f013.png",
+      "victory_loop_anim_y00_f014.png",
+      "victory_loop_anim_y00_f015.png",
+      "victory_loop_anim_y00_f016.png",
+      "victory_loop_anim_y00_f017.png",
+      "victory_loop_anim_y00_f018.png",
+      "victory_loop_anim_y00_f019.png"
+     ]
+    },
+    {
+     "yaw": 0.0,
+     "files": [
+      "victory_loop_anim_y01_f000.png",
+      "victory_loop_anim_y01_f001.png",
+      "victory_loop_anim_y01_f002.png",
+      "victory_loop_anim_y01_f003.png",
+      "victory_loop_anim_y01_f004.png",
+      "victory_loop_anim_y01_f005.png",
+      "victory_loop_anim_y01_f006.png",
+      "victory_loop_anim_y01_f007.png",
+      "victory_loop_anim_y01_f008.png",
+      "victory_loop_anim_y01_f009.png",
+      "victory_loop_anim_y01_f010.png",
+      "victory_loop_anim_y01_f011.png",
+      "victory_loop_anim_y01_f012.png",
+      "victory_loop_anim_y01_f013.png",
+      "victory_loop_anim_y01_f014.png",
+      "victory_loop_anim_y01_f015.png",
+      "victory_loop_anim_y01_f016.png",
+      "victory_loop_anim_y01_f017.png",
+      "victory_loop_anim_y01_f018.png",
+      "victory_loop_anim_y01_f019.png"
+     ]
+    }
+   ],
+   "duration": 1.233,
+   "fps": 16.22,
+   "category": "胜利",
+   "categoryEn": "victory"
+  }
+ }
+}

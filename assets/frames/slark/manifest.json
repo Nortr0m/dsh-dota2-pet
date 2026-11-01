@@ -67,7 +67,9 @@
     }
    ],
    "duration": 1.5,
-   "fps": 16.0
+   "fps": 16.0,
+   "category": "待机",
+   "categoryEn": "idle"
   },
   "@run": {
    "frames": 16,
@@ -117,7 +119,9 @@
     }
    ],
    "duration": 0.8,
-   "fps": 20.0
+   "fps": 20.0,
+   "category": "移动",
+   "categoryEn": "move"
   },
   "attack_anim": {
    "frames": 12,
@@ -159,7 +163,9 @@
     }
    ],
    "duration": 1.0,
-   "fps": 12.0
+   "fps": 12.0,
+   "category": "攻击",
+   "categoryEn": "attack"
   },
   "pounce_anim": {
    "frames": 14,
@@ -205,7 +211,9 @@
     }
    ],
    "duration": 1.125,
-   "fps": 12.44
+   "fps": 12.44,
+   "category": "技能",
+   "categoryEn": "skill"
   },
   "dark_pact_anim": {
    "frames": 14,
@@ -251,7 +259,9 @@
     }
    ],
    "duration": 1.5,
-   "fps": 9.33
+   "fps": 9.33,
+   "category": "施法",
+   "categoryEn": "cast"
   },
   "@shadow_dance": {
    "frames": 12,
@@ -293,7 +303,9 @@
     }
    ],
    "duration": 0.8,
-   "fps": 15.0
+   "fps": 15.0,
+   "category": "技能",
+   "categoryEn": "skill"
   },
   "death": {
    "frames": 16,
@@ -343,7 +355,9 @@
     }
    ],
    "duration": 1.467,
-   "fps": 10.91
+   "fps": 10.91,
+   "category": "死亡",
+   "categoryEn": "death"
   },
   "victory": {
    "frames": 20,
@@ -401,7 +415,9 @@
     }
    ],
    "duration": 3.6,
-   "fps": 5.56
+   "fps": 5.56,
+   "category": "胜利",
+   "categoryEn": "victory"
   }
  }
 }
