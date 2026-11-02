@@ -75,7 +75,7 @@ class Model:
         self.scene_roots = j.get("scenes", [{}])[j.get("scene", 0)].get("nodes", [])
 
         # 网格：把所有 primitive 拼成一整块
-        pos, nrm, uv, joints, weights, index, mat = [], [], [], [], [], [], []
+        pos, nrm, uv, joints, weights, index, mat, tan = [], [], [], [], [], [], [], []
         base = 0
         for mesh in j.get("meshes", []):
             for pr in mesh["primitives"]:
@@ -84,6 +84,9 @@ class Model:
                 pos.append(p)
                 nrm.append(_accessor(j, self.blob, at["NORMAL"]) if "NORMAL" in at else np.zeros_like(p))
                 uv.append(_accessor(j, self.blob, at["TEXCOORD_0"]) if "TEXCOORD_0" in at else np.zeros((len(p), 2)))
+                # TANGENT 是 VEC4（xyz + 手性 w），法线贴图要用它建 TBN
+                tan.append(_accessor(j, self.blob, at["TANGENT"]) if "TANGENT" in at
+                           else np.tile(np.array([1.0, 0.0, 0.0, 1.0]), (len(p), 1)))
                 mat.append(np.full(len(p), pr.get("material", -1), dtype=np.int64))
                 if "JOINTS_0" in at and "WEIGHTS_0" in at:
                     joints.append(_accessor(j, self.blob, at["JOINTS_0"]).astype(np.int64))
@@ -103,6 +106,7 @@ class Model:
         self.POS = np.concatenate(pos) if pos else np.zeros((0, 3))
         self.NRM = np.concatenate(nrm) if nrm else np.zeros((0, 3))
         self.UV = np.concatenate(uv) if uv else np.zeros((0, 2))
+        self.TAN = np.concatenate(tan) if tan else np.zeros((0, 4))
         self.JOINTS = np.concatenate(joints).astype(np.int64) if joints else np.zeros((0, 4), np.int64)
         self.WEIGHTS = np.concatenate(weights) if weights else np.zeros((0, 4))
         self.INDEX = np.concatenate(index).astype(np.int64) if index else np.zeros(0, np.int64)
@@ -157,8 +161,22 @@ class Model:
                 stack.append((c, m))
         return out
 
-    def merge_parts(self, paths):
-        """把静态部件（默认饰品）并进本体：按绑定姿势的最近骨骼做刚性绑定。"""
+    def merge_parts(self, paths, transfer_weights=True):
+        """把静态部件（默认饰品）并进本体。
+
+        绑定方式（关键）：
+          1) 首选**从本体网格做最近邻权重传递**：饰品每个顶点复制距离最近的本体顶点的
+             JOINTS/WEIGHTS。这是资产流水线的标准做法——帽子跟着头、护腕各自跟着两只
+             小臂、披风跟着脊柱，且形变与本体完全一致。
+          2) 本体没有蒙皮数据时，退回"按绑定姿势的最近骨骼做刚性绑定"。
+        只用 2) 的刚性绑定会让跨骨骼部件被硬拉（兜帽一半跟头一半跟颈），
+        在动作里就会错位、剪切——即"头部不对/穿模"。
+        """
+        body_POS = self.POS.copy()
+        body_J = self.JOINTS.copy()
+        body_W = self.WEIGHTS.copy()
+        have_skin = len(body_W) > 0 and float(body_W.sum()) > 0.0
+
         world = self._world({})
         if len(self.skin_joints):
             bone_pos = np.array([world[int(n)][:3, 3] for n in self.skin_joints])
@@ -183,7 +201,13 @@ class Model:
                 remap[mi] = idx
             n = len(pm.POS)
             off = len(self.POS)
-            if bone_pos is not None and len(bone_pos):
+            if transfer_weights and have_skin:
+                # 最近邻权重传递：抄最近本体顶点的骨骼与权重
+                d = ((pm.POS[:, None, :] - body_POS[None, :, :]) ** 2).sum(axis=2)
+                nn = d.argmin(axis=1)
+                j4 = body_J[nn]
+                w4 = body_W[nn]
+            elif bone_pos is not None and len(bone_pos):
                 d = ((pm.POS[:, None, :] - bone_pos[None, :, :]) ** 2).sum(axis=2)
                 near = d.argmin(axis=1)
                 # JOINTS_0 要的是"骨骼在 skin.joints 里的槽位序号"，不是节点 id。
@@ -201,6 +225,7 @@ class Model:
             self.POS = np.vstack([self.POS, pm.POS])
             self.NRM = np.vstack([self.NRM, pm.NRM])
             self.UV = np.vstack([self.UV, pm.UV])
+            self.TAN = np.vstack([self.TAN, pm.TAN])
             self.JOINTS = np.vstack([self.JOINTS, j4])
             self.WEIGHTS = np.vstack([self.WEIGHTS, w4])
             self.MAT = np.concatenate([self.MAT, pm_mat])
@@ -210,35 +235,47 @@ class Model:
         return self
 
     def _load_textures(self):
-        """从 GLB 里取出每个材质的 baseColor 贴图。"""
+        """从 GLB 里取出每个材质的 baseColor 贴图、法线贴图与 alpha 裁剪阈值。"""
         from io import BytesIO
         j = self.json
-        self.tex = []
+
+        def load_ref(ref):
+            """ref：glTF 的 textureInfo（含 index）。返回 numpy RGBA 或 None。"""
+            if not ref:
+                return None
+            ti = ref.get("index")
+            if ti is None:
+                return None
+            src = j["textures"][ti].get("source")
+            if src is None:
+                return None
+            im = j["images"][src]
+            if "bufferView" in im and im.get("bufferView") is not None:
+                bv = j["bufferViews"][im["bufferView"]]
+                off = bv.get("byteOffset", 0)
+                raw = self.blob[off:off + bv["byteLength"]]
+                try:
+                    return np.asarray(Image.open(BytesIO(raw)).convert("RGBA")).astype(np.float64)
+                except Exception:
+                    return None
+            # 贴图未内嵌：VRF 会把解码后的 PNG 放在 GLB 同级目录，用名字对应
+            nm = im.get("name") or ""
+            cand = os.path.join(self.dir, os.path.splitext(nm)[0] + ".png")
+            if os.path.exists(cand):
+                try:
+                    return np.asarray(Image.open(cand).convert("RGBA")).astype(np.float64)
+                except Exception:
+                    return None
+            return None
+
+        self.tex = []      # baseColor
+        self.ntex = []     # normal map（切线空间）
+        self.cut = []      # alphaCutoff，MASK 材质用它而不是写死阈值
         for mt in j.get("materials", []):
-            img = None
-            bct = mt.get("pbrMetallicRoughness", {}).get("baseColorTexture")
-            if bct is not None:
-                src = j["textures"][bct["index"]].get("source")
-                if src is not None:
-                    im = j["images"][src]
-                    if "bufferView" in im and im.get("bufferView") is not None:
-                        bv = j["bufferViews"][im["bufferView"]]
-                        off = bv.get("byteOffset", 0)
-                        raw = self.blob[off:off + bv["byteLength"]]
-                        try:
-                            img = Image.open(BytesIO(raw)).convert("RGBA")
-                        except Exception:
-                            img = None
-                    else:
-                        # 贴图未内嵌：VRF 会把解码后的 PNG 放在 GLB 同级目录，用名字对应
-                        nm = im.get("name") or ""
-                        cand = os.path.join(self.dir, os.path.splitext(nm)[0] + ".png")
-                        if os.path.exists(cand):
-                            try:
-                                img = Image.open(cand).convert("RGBA")
-                            except Exception:
-                                img = None
-            self.tex.append(np.asarray(img).astype(np.float64) if img is not None else None)
+            pbr = mt.get("pbrMetallicRoughness", {})
+            self.tex.append(load_ref(pbr.get("baseColorTexture")))
+            self.ntex.append(load_ref(mt.get("normalTexture")))
+            self.cut.append(float(mt.get("alphaCutoff", 0.5) or 0.5))
 
     def vertex_colors(self):
         """每个顶点的底色（双线性采样 baseColor 贴图）。"""
@@ -289,7 +326,7 @@ class Model:
         return over
 
     def pose_vertices(self, over):
-        """蒙皮后的顶点位置与法线。"""
+        """蒙皮后的顶点位置、法线与切线（切线存在 self.last_tan，供法线贴图用）。"""
         world = self._world(over)
         if len(self.skin_joints) and self.ibm is not None and len(self.ibm) == len(self.skin_joints):
             jm = np.stack([world.get(int(n), np.eye(4)) @ self.ibm[k] for k, n in enumerate(self.skin_joints)])
@@ -298,22 +335,31 @@ class Model:
             acc = np.zeros((len(p), 4))
             nacc = np.zeros((len(p), 4))
             nh = np.concatenate([self.NRM, np.zeros((len(self.NRM), 1))], axis=1)
+            th = np.concatenate([self.TAN[:, :3], np.zeros((len(self.TAN), 1))], axis=1)
+            tacc = np.zeros((len(p), 4))
             for k in range(4):
                 Mk = jm[self.JOINTS[:, k]]
                 wk = self.WEIGHTS[:, k:k + 1]
                 acc += wk * np.einsum("nij,nj->ni", Mk, ph)
                 nacc += wk * np.einsum("nij,nj->ni", Mk, nh)
+                tacc += wk * np.einsum("nij,nj->ni", Mk, th)
         else:
             m = np.eye(4)
             for r in self.scene_roots:
                 pass
             acc = np.concatenate([self.POS, np.ones((len(self.POS), 1))], axis=1)
             nacc = np.concatenate([self.NRM, np.zeros((len(self.NRM), 1))], axis=1)
+            tacc = np.concatenate([self.TAN[:, :3], np.zeros((len(self.TAN), 1))], axis=1)
         self.last_world = world
         pos = acc[:, :3]
         nrm = nacc[:, :3]
         ln = np.linalg.norm(nrm, axis=1, keepdims=True)
         ln[ln == 0] = 1
+        tan = tacc[:, :3]
+        lt = np.linalg.norm(tan, axis=1, keepdims=True)
+        lt[lt == 0] = 1
+        # 手性 w：正交化后备用（B = cross(N,T) * w）
+        self.last_tan = np.concatenate([tan / lt, self.TAN[:, 3:4] if len(self.TAN) else np.ones((0, 1))], axis=1)
         return pos, nrm / ln
 
 
@@ -355,9 +401,9 @@ def _sample_tex(img, u, v):
             + img[y0, x1] * fx * (1 - fy) + img[y1, x1] * fx * fy)
 
 
-def rasterize(tri, nrm_tri, uv_tri, mat_tri, tex, idx, W, H, lights=None,
+def rasterize(tri, nrm_tri, uv_tri, tan_tri, mat_tri, tex, ntex, cuts, idx, W, H, lights=None,
               amb=0.54, alpha_test=0.35):
-    """逐像素插值法线与 UV，采样贴图并做光照。"""
+    """逐像素插值法线/切线/UV，采样 baseColor + 法线贴图并做光照。"""
     img = np.zeros((H, W, 3), np.float64)
     zbuf = np.full((H, W), np.inf)
     mask = np.zeros((H, W), bool)
@@ -391,13 +437,33 @@ def rasterize(tri, nrm_tri, uv_tri, mat_tri, tex, idx, W, H, lights=None,
         nn = np.linalg.norm(n, axis=2, keepdims=True)
         nn[nn == 0] = 1.0
         nd = n / nn
+
+        uv = (l0[..., None] * uv_tri[i, 0] + l1[..., None] * uv_tri[i, 1]
+              + l2[..., None] * uv_tri[i, 2])
+
+        # 法线贴图：用插值后的切线建 TBN，把切线空间法线转到世界空间再打光。
+        # 之前完全没用这张图（GLB 里其实一直带着），所以画面是"平的"。
+        nmap = ntex[mat_tri[i]] if (ntex and 0 <= mat_tri[i] < len(ntex)) else None
+        if nmap is not None:
+            tn = (l0[..., None] * tan_tri[i, 0] + l1[..., None] * tan_tri[i, 1]
+                  + l2[..., None] * tan_tri[i, 2])
+            tl = np.linalg.norm(tn, axis=2, keepdims=True)
+            tl[tl == 0] = 1.0
+            T = tn / tl
+            B = np.cross(nd, T)
+            h, w = nmap.shape[:2]
+            ns = _sample_tex(nmap, (uv[..., 0] % 1.0) * (w - 1), (uv[..., 1] % 1.0) * (h - 1))
+            nt = ns[..., :3] / 127.5 - 1.0
+            nd = T * nt[..., 0:1] + B * nt[..., 1:2] + nd * nt[..., 2:3]
+            nn = np.linalg.norm(nd, axis=2, keepdims=True)
+            nn[nn == 0] = 1.0
+            nd = nd / nn
+
         lam = np.zeros(nd.shape[:2])
         for lv, lw in (lights or []):
             lam += np.clip(nd @ lv, 0.0, 1.0) * lw
         shade = np.clip(amb + 1.15 * lam, 0.0, 1.60)
 
-        uv = (l0[..., None] * uv_tri[i, 0] + l1[..., None] * uv_tri[i, 1]
-              + l2[..., None] * uv_tri[i, 2])
         t = tex[mat_tri[i]] if 0 <= mat_tri[i] < len(tex) else None
         if t is not None:
             th, tw = t.shape[:2]
@@ -405,7 +471,11 @@ def rasterize(tri, nrm_tri, uv_tri, mat_tri, tex, idx, W, H, lights=None,
             alb = _sample_tex(t, (uv[..., 0] % 1.0) * (tw - 1),
                               (uv[..., 1] % 1.0) * (th - 1))
             if t.shape[2] == 4:
-                better = better & (alb[..., 3] > alpha_test)
+                # alpha 裁剪阈值取材质自带的 alphaCutoff（MASK 材质），拿不到才退回默认值
+                thr = cuts[mat_tri[i]] if (cuts and 0 <= mat_tri[i] < len(cuts)) else alpha_test
+                if thr <= 1.0:
+                    thr *= 255.0          # glTF 的 alphaCutoff 是 0..1，贴图 alpha 是 0..255
+                better = better & (alb[..., 3] >= thr)
                 if not better.any():
                     continue
             col = alb[..., :3] * shade[..., None]
@@ -477,15 +547,23 @@ def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
     tri = scr[model.TRIS]
     nrm_tri = nrm[model.TRIS]
     uv_tri = model.UV[model.TRIS]
+    tan = getattr(model, "last_tan", None)
+    if tan is None or len(tan) != len(model.POS):
+        tan = np.tile(np.array([1.0, 0.0, 0.0, 1.0]), (len(model.POS), 1))
+    if flipped:
+        tan = tan.copy()
+        tan[:, :3] = -tan[:, :3]
+    tan_tri = tan[model.TRIS][:, :, :3]
     mat_tri = model.MAT[model.TRIS[:, 0]]
     area = ((tri[:, 1, 0] - tri[:, 0, 0]) * (tri[:, 2, 1] - tri[:, 0, 1])
             - (tri[:, 2, 0] - tri[:, 0, 0]) * (tri[:, 1, 1] - tri[:, 0, 1]))
     keep = area > 0
     tex = model.tex if textured else [None] * len(model.tex)
+    ntex = model.ntex if textured else [None] * len(getattr(model, "ntex", []))
     if os.environ.get('D2_SHOW_NORMALS'):
         print('  法线朝向: 原始lam均值=%.3f 翻转后=%.3f -> %s' % (fwd, bwd, '已翻转' if flipped else '保持'))
-    rgb, mask = rasterize(tri[keep], nrm_tri[keep], uv_tri[keep], mat_tri[keep],
-                          tex, model.TRIS[keep], W, H, lights)
+    rgb, mask = rasterize(tri[keep], nrm_tri[keep], uv_tri[keep], tan_tri[keep], mat_tri[keep],
+                          tex, ntex, model.cut, model.TRIS[keep], W, H, lights)
     img = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB").resize((size, size), Image.LANCZOS)
     al = Image.fromarray((mask * 255).astype(np.uint8), "L").resize((size, size), Image.LANCZOS)
     out = img.convert("RGBA")

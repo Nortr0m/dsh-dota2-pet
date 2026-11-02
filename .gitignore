@@ -3,10 +3,11 @@ node_modules/
 pnpm-lock.yaml
 *.tgz
 
-# 运行期产生的日志（不属于源码）
+# 运行期产生的日志与标签（不属于源码）
 _diag.log
 **/_diag.log
 **/_window.log
+_pet_labels.json
 
 # 烘焙工具链的中间产物：模型导出与游戏数据（体积大、且属于 Valve 素材）
 tools/bake/data/

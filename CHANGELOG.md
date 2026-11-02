@@ -2,12 +2,33 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.2.1] - 2026-11-03
+
+### 新增
+- **桌面窗口汉化**：菜单项（待机/移动/攻击/施法/技能/死亡/胜利/放大/缩小/退出桌宠）改为中文。
+  做法是宿主半把标签写成 UTF-8 JSON，脚本只读数据——`pet-window.ps1` 必须保持纯 ASCII，
+  因为 Windows PowerShell 5.1 会把无 BOM 的 `.ps1` 按 ANSI 解码，源码里写中文会直接读崩语法
+- **127 个英雄的官方简体中文名**：客户端从 dota2.com 简体中文 datafeed 生成完整映射并补上
+  `heroSlug()`；此前只有 11 个手写中文名，其余显示成"英雄 #id"、英雄按钮显示英文 slug
+- **渲染器支持法线贴图**：GLB 一直带 `normalTexture` 与 `TANGENT`，此前完全没用（画面发平）；
+  现在按插值后的切线建 TBN，把切线空间法线转到世界空间再打光
+- 文档：新增 [`docs/research-source2-models.md`](./docs/research-source2-models.md)（社区做法调研）；
+  README 增加 Source 2 Viewer 署名（其 README 明确要求使用方标注）
+
+### 修复
+- **烘焙优先选非 `@` 前缀动画**：`@run` / `@@run` 在模型里是**已废弃**动画，VRF 出现过
+  "正确的 run 被 @run 覆盖"（[VRF issue #1057](https://github.com/ValveResourceFormat/ValveResourceFormat/issues/1057)）。
+  斯拉克内置动作集由 `@run` / `@shadow_dance` 换成 `run` / `shadow_dance`，三个英雄已全部重新烘焙
+- **alpha 裁剪改用材质自带的 `alphaCutoff`**（实测各材质均为 0.5），不再写死 0.35
+- **版本号统一从 `package.json` 读**：此前宿主半写死 `0.1.0` 而包已是 `0.2.0`，出现漂移
+
 ## [未发布]
 
 ### 计划中
 - 本机素材增强：从本机 Dota 2 的 VPK 直读英雄头像与载入画面（不复制、不落盘）
 - 按账号「最常玩英雄」自动选择出场角色；继续扩充内置英雄
 - 桌面窗口：多显示器定位、开机自启、点击穿透
+- 渲染：补高光与边缘光（社区普遍反映自研渲染器缺这两项，是与游戏观感差距的主因）
 
 ## [0.2.0] - 2026-11-02
 
@@ -47,6 +68,7 @@
 - Windows PowerShell 5.1 读取 `.ps1` 的编码问题：脚本改为纯 ASCII 内容并带 UTF-8 BOM，否则中文字符串会被按 GBK 解码导致语法错误
 - 路由注册规避宿主 `prefix` 只对完全一致路径生效的限制：带查询串的接口注册裸路径，静态帧按文件逐条注册精确路由
 
-[未发布]: https://github.com/Nortrom/dsh-dota2-pet/compare/v0.2.0...HEAD
+[未发布]: https://github.com/Nortrom/dsh-dota2-pet/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.1.0

@@ -21,7 +21,8 @@ param(
   [int]$Left = 0,
   [int]$Top = 0,
   [int]$Fps = 0,
-  [string]$LogFile = ''
+  [string]$LogFile = '',
+  [string]$Labels = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -35,6 +36,24 @@ function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
     Add-Content -Path $LogFile -Value $line -Encoding UTF8
   } catch { }
+}
+
+# Chinese labels come from a UTF-8 JSON file written by the plugin host half, so this
+# script stays pure ASCII on purpose: Windows PowerShell 5.1 decodes a .ps1 without a
+# BOM as ANSI, and non-ASCII text in the source would break the parser (it did once).
+$L = @{}
+if ($Labels -and (Test-Path $Labels)) {
+  try {
+    $j = Get-Content $Labels -Raw -Encoding UTF8 | ConvertFrom-Json
+    foreach ($p in $j.PSObject.Properties) { $L[$p.Name] = [string]$p.Value }
+    Write-Log ('labels loaded: ' + $L.Count)
+  } catch {
+    Write-Log ('labels load failed: ' + $_.Exception.Message)
+  }
+}
+function T([string]$key, [string]$fallback) {
+  if ($L.ContainsKey($key)) { return $L[$key] }
+  return $fallback
 }
 
 Write-Log ('=== start pid=' + $PID + ' action=' + $Action + ' scale=' + $Scale + ' ===')
@@ -155,7 +174,7 @@ foreach ($name in $actionNames) {
   $cat = 'action'
   if ($entry.categoryEn) { $cat = $entry.categoryEn }
   $mi = New-Object System.Windows.Controls.MenuItem
-  $mi.Header = $cat + '  ' + $name
+  $mi.Header = (T $cat $cat) + '  ' + $name
   $mi.Tag = $name
   $mi.Add_Click({
     param($sender, $evt)
@@ -171,18 +190,19 @@ foreach ($name in $actionNames) {
       }
     }
   })
+  Write-Log ('menu item: ' + $mi.Header)
   $menu.Items.Add($mi) | Out-Null
 }
 $miBig = New-Object System.Windows.Controls.MenuItem
-$miBig.Header = 'Scale +'
+$miBig.Header = (T 'scaleUp' 'Scale +')
 $miBig.Add_Click({ $window.Width = $window.Width * 1.15; $window.Height = $window.Height * 1.15 })
 $menu.Items.Add($miBig) | Out-Null
 $miSmall = New-Object System.Windows.Controls.MenuItem
-$miSmall.Header = 'Scale -'
+$miSmall.Header = (T 'scaleDown' 'Scale -')
 $miSmall.Add_Click({ $window.Width = $window.Width / 1.15; $window.Height = $window.Height / 1.15 })
 $menu.Items.Add($miSmall) | Out-Null
 $miQuit = New-Object System.Windows.Controls.MenuItem
-$miQuit.Header = 'Quit pet'
+$miQuit.Header = (T 'quit' 'Quit pet')
 $miQuit.Add_Click({ Write-Log 'quit from menu'; $window.Close() })
 $menu.Items.Add($miQuit) | Out-Null
 $window.ContextMenu = $menu

@@ -11,7 +11,7 @@
  * 所以带查询串的接口注册裸路径（exact + prefix 各一次），静态文件按每个文件逐条注册。
  */
 
-import { appendFileSync, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { appendFileSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +23,11 @@ const FRAMES_ROOT = path.join(HERE, 'assets', 'frames');
 const ICON = path.join(HERE, 'icon.svg');
 const WIN_SCRIPT = path.join(HERE, 'lib', 'pet-window.ps1');
 const DIAG = path.join(HERE, '_diag.log');
-const VERSION = '0.1.0';
+// 版本号只认 package.json，避免两处写死之后漂移（之前就漂过：包 0.2.0 / 代码 0.1.0）
+const VERSION = (() => {
+  try { return JSON.parse(readFileSync(path.join(HERE, 'package.json'), 'utf8')).version || '0.0.0'; }
+  catch { return '0.0.0'; }
+})();
 
 const API = '/dota2-pet/api/';
 const FRAMES = '/dota2-pet/frames/';
@@ -224,6 +228,29 @@ async function playerData(accountId, days) {
 
 let petWindow = null;      // { child, startedAt, args }
 
+/**
+ * 桌面窗口的中文标签。
+ * PowerShell 5.1 会把无 BOM 的 .ps1 按 ANSI 读，所以脚本源码必须保持纯 ASCII；
+ * 中文一律走这个 UTF-8 数据文件，脚本只负责读数据（读取时显式指定 UTF8 编码）。
+ */
+const PET_LABELS = {
+  idle: '待机', move: '移动', attack: '攻击', cast: '施法', skill: '技能',
+  hit: '受击', death: '死亡', victory: '胜利', spawn: '出生/传送', show: '展示/嘲讽',
+  other: '动作', action: '动作', scaleUp: '放大', scaleDown: '缩小',
+  quit: '退出桌宠', title: 'Dota 2 桌宠'
+};
+
+function labelFile() {
+  const file = path.join(HERE, '_pet_labels.json');
+  try {
+    writeFileSync(file, JSON.stringify(PET_LABELS, null, 1), 'utf8');
+  } catch (e) {
+    log({ tag: 'labels', error: String(e && e.message) });
+    return null;
+  }
+  return file;
+}
+
 function windowStatus() {
   const alive = petWindow && petWindow.child && petWindow.child.exitCode === null;
   return {
@@ -245,6 +272,7 @@ function startWindow(q) {
   if (!existsSync(path.join(dir, 'manifest.json'))) {
     return { ok: false, error: 'no-frames', hero };
   }
+  const labels = labelFile();
   const args = [
     '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden',
     '-File', WIN_SCRIPT,
@@ -254,6 +282,7 @@ function startWindow(q) {
     '-Left', String(Number(q.left) || 0),
     '-Top', String(Number(q.top) || 0)
   ];
+  if (labels) args.push('-Labels', labels);
   try {
     const child = spawn('powershell.exe', args, { detached: true, stdio: 'ignore', windowsHide: true });
     child.unref();

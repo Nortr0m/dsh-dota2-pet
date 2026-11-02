@@ -6,6 +6,8 @@
   "idle_anim": {
    "frames": 32,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -83,13 +85,13 @@
     }
    ],
    "duration": 2.933,
-   "fps": 10.91,
-   "category": "待机",
-   "categoryEn": "idle"
+   "fps": 10.91
   },
   "run_anim": {
    "frames": 12,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -127,13 +129,13 @@
     }
    ],
    "duration": 0.767,
-   "fps": 15.65,
-   "category": "移动",
-   "categoryEn": "move"
+   "fps": 15.65
   },
   "attack1_anim": {
    "frames": 14,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -175,13 +177,13 @@
     }
    ],
    "duration": 0.867,
-   "fps": 16.15,
-   "category": "攻击",
-   "categoryEn": "attack"
+   "fps": 16.15
   },
   "cast_fire_shield": {
    "frames": 13,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -221,13 +223,13 @@
     }
    ],
    "duration": 0.8,
-   "fps": 16.25,
-   "category": "施法",
-   "categoryEn": "cast"
+   "fps": 16.25
   },
   "cast2_ignite_anim": {
    "frames": 15,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -271,13 +273,13 @@
     }
    ],
    "duration": 0.914,
-   "fps": 16.41,
-   "category": "施法",
-   "categoryEn": "cast"
+   "fps": 16.41
   },
   "dieBack": {
    "frames": 26,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -343,13 +345,13 @@
     }
    ],
    "duration": 1.6,
-   "fps": 16.25,
-   "category": "死亡",
-   "categoryEn": "death"
+   "fps": 16.25
   },
   "victory_loop_anim": {
    "frames": 20,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -403,9 +405,7 @@
     }
    ],
    "duration": 1.233,
-   "fps": 16.22,
-   "category": "胜利",
-   "categoryEn": "victory"
+   "fps": 16.22
   }
  }
 }

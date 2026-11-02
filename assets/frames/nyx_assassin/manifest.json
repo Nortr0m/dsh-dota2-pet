@@ -6,6 +6,8 @@
   "idle_anim": {
    "frames": 32,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -83,13 +85,13 @@
     }
    ],
    "duration": 5.2,
-   "fps": 6.15,
-   "category": "待机",
-   "categoryEn": "idle"
+   "fps": 6.15
   },
   "run_anim": {
    "frames": 13,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -129,13 +131,13 @@
     }
    ],
    "duration": 0.8,
-   "fps": 16.25,
-   "category": "移动",
-   "categoryEn": "move"
+   "fps": 16.25
   },
   "attack_anim": {
    "frames": 15,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -179,13 +181,13 @@
     }
    ],
    "duration": 0.967,
-   "fps": 15.51,
-   "category": "攻击",
-   "categoryEn": "attack"
+   "fps": 15.51
   },
   "spiked_carapace_anim": {
    "frames": 12,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -223,13 +225,13 @@
     }
    ],
    "duration": 0.667,
-   "fps": 17.99,
-   "category": "施法",
-   "categoryEn": "cast"
+   "fps": 17.99
   },
   "cast5_burrow_end": {
    "frames": 12,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -267,13 +269,13 @@
     }
    ],
    "duration": 0.733,
-   "fps": 16.37,
-   "category": "施法",
-   "categoryEn": "cast"
+   "fps": 16.37
   },
   "death": {
    "frames": 32,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -351,13 +353,13 @@
     }
    ],
    "duration": 2.467,
-   "fps": 12.97,
-   "category": "死亡",
-   "categoryEn": "death"
+   "fps": 12.97
   },
   "victory": {
    "frames": 17,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -405,9 +407,7 @@
     }
    ],
    "duration": 1.033,
-   "fps": 16.46,
-   "category": "胜利",
-   "categoryEn": "victory"
+   "fps": 16.46
   }
  }
 }

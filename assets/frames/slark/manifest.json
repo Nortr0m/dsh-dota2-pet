@@ -6,6 +6,8 @@
   "idle_anim": {
    "frames": 24,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -67,13 +69,13 @@
     }
    ],
    "duration": 1.5,
-   "fps": 16.0,
-   "category": "待机",
-   "categoryEn": "idle"
+   "fps": 16.0
   },
-  "@run": {
+  "run": {
    "frames": 16,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -119,13 +121,13 @@
     }
    ],
    "duration": 0.8,
-   "fps": 20.0,
-   "category": "移动",
-   "categoryEn": "move"
+   "fps": 20.0
   },
   "attack_anim": {
    "frames": 12,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -163,13 +165,13 @@
     }
    ],
    "duration": 1.0,
-   "fps": 12.0,
-   "category": "攻击",
-   "categoryEn": "attack"
+   "fps": 12.0
   },
   "pounce_anim": {
    "frames": 14,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -211,13 +213,13 @@
     }
    ],
    "duration": 1.125,
-   "fps": 12.44,
-   "category": "技能",
-   "categoryEn": "skill"
+   "fps": 12.44
   },
   "dark_pact_anim": {
    "frames": 14,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -259,13 +261,13 @@
     }
    ],
    "duration": 1.5,
-   "fps": 9.33,
-   "category": "施法",
-   "categoryEn": "cast"
+   "fps": 9.33
   },
-  "@shadow_dance": {
+  "shadow_dance": {
    "frames": 12,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -303,13 +305,13 @@
     }
    ],
    "duration": 0.8,
-   "fps": 15.0,
-   "category": "技能",
-   "categoryEn": "skill"
+   "fps": 15.0
   },
   "death": {
    "frames": 16,
    "loop": false,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -355,13 +357,13 @@
     }
    ],
    "duration": 1.467,
-   "fps": 10.91,
-   "category": "死亡",
-   "categoryEn": "death"
+   "fps": 10.91
   },
   "victory": {
    "frames": 20,
    "loop": true,
+   "category": "其他",
+   "categoryEn": "other",
    "yaws": [
     {
      "yaw": -180.0,
@@ -415,9 +417,7 @@
     }
    ],
    "duration": 3.6,
-   "fps": 5.56,
-   "category": "胜利",
-   "categoryEn": "victory"
+   "fps": 5.56
   }
  }
 }

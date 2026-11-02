@@ -146,11 +146,11 @@ def frames_of(m, anim, n, t0=0.0, span=None, exclusive=False):
 # 内置基础动作集：动作名 -> 帧数（帧率由时长反推，保持游戏原速）
 BAKE_SET = [
     ("idle_anim", 24),
-    ("@run", 16),
+    ("run", 16),
     ("attack_anim", 12),
     ("pounce_anim", 14),
     ("dark_pact_anim", 14),
-    ("@shadow_dance", 12),
+    ("shadow_dance", 12),
     ("death", 16),
     ("victory", 20),
 ]
@@ -183,7 +183,7 @@ def pick_bake_set(lib, fps=16):
     picks = []
     # 待机 / 移动 / 攻击
     picks.append(by_name(['idle_anim', 'idle', 'idle2_anim']) or by_cat(('待机',)))
-    picks.append(by_name(['@run', 'run_anim', 'run', '@run_anim']) or by_cat(('移动',)))
+    picks.append(by_name(['run_anim', 'run', '@run_anim', '@run']) or by_cat(('移动',)))
     picks.append(by_name(['attack_anim', 'attack1_anim', 'attack2_anim', 'attack'])
                  or by_cat(('攻击',), exclude=('versus',)))
 

@@ -99,15 +99,53 @@ window.__ModuleLoader__.load({
       135: 'dawnbreaker', 136: 'marci', 137: 'primal_beast', 138: 'muerta',
       145: 'kez', 155: 'ringmaster'
     };
+    /* 官方简体中文英雄名 + slug（dota2.com 简体中文 datafeed，共 127 个英雄） */
+    const HERO_INFO = {
+      1: ['敌法师', 'antimage'], 2: ['斧王', 'axe'], 3: ['祸乱之源', 'bane'], 4: ['血魔', 'bloodseeker'],
+      5: ['水晶室女', 'crystal_maiden'], 6: ['卓尔游侠', 'drow_ranger'], 7: ['撼地者', 'earthshaker'], 8: ['主宰', 'juggernaut'],
+      9: ['米拉娜', 'mirana'], 10: ['变体精灵', 'morphling'], 11: ['影魔', 'nevermore'], 12: ['幻影长矛手', 'phantom_lancer'],
+      13: ['帕克', 'puck'], 14: ['帕吉', 'pudge'], 15: ['雷泽', 'razor'], 16: ['沙王', 'sand_king'],
+      17: ['风暴之灵', 'storm_spirit'], 18: ['斯温', 'sven'], 19: ['小小', 'tiny'], 20: ['复仇之魂', 'vengefulspirit'],
+      21: ['风行者', 'windrunner'], 22: ['宙斯', 'zuus'], 23: ['昆卡', 'kunkka'], 25: ['莉娜', 'lina'],
+      26: ['莱恩', 'lion'], 27: ['暗影萨满', 'shadow_shaman'], 28: ['斯拉达', 'slardar'], 29: ['潮汐猎人', 'tidehunter'],
+      30: ['巫医', 'witch_doctor'], 31: ['巫妖', 'lich'], 32: ['力丸', 'riki'], 33: ['谜团', 'enigma'],
+      34: ['修补匠', 'tinker'], 35: ['狙击手', 'sniper'], 36: ['瘟疫法师', 'necrolyte'], 37: ['术士', 'warlock'],
+      38: ['兽王', 'beastmaster'], 39: ['痛苦女王', 'queenofpain'], 40: ['剧毒术士', 'venomancer'], 41: ['虚空假面', 'faceless_void'],
+      42: ['冥魂大帝', 'skeleton_king'], 43: ['死亡先知', 'death_prophet'], 44: ['幻影刺客', 'phantom_assassin'], 45: ['帕格纳', 'pugna'],
+      46: ['圣堂刺客', 'templar_assassin'], 47: ['冥界亚龙', 'viper'], 48: ['露娜', 'luna'], 49: ['龙骑士', 'dragon_knight'],
+      50: ['戴泽', 'dazzle'], 51: ['发条技师', 'rattletrap'], 52: ['拉席克', 'leshrac'], 53: ['自然先知', 'furion'],
+      54: ['噬魂鬼', 'life_stealer'], 55: ['黑暗贤者', 'dark_seer'], 56: ['克林克兹', 'clinkz'], 57: ['全能骑士', 'omniknight'],
+      58: ['魅惑魔女', 'enchantress'], 59: ['哈斯卡', 'huskar'], 60: ['暗夜魔王', 'night_stalker'], 61: ['育母蜘蛛', 'broodmother'],
+      62: ['赏金猎人', 'bounty_hunter'], 63: ['编织者', 'weaver'], 64: ['杰奇洛', 'jakiro'], 65: ['蝙蝠骑士', 'batrider'],
+      66: ['陈', 'chen'], 67: ['幽鬼', 'spectre'], 68: ['远古冰魄', 'ancient_apparition'], 69: ['末日使者', 'doom_bringer'],
+      70: ['熊战士', 'ursa'], 71: ['裂魂人', 'spirit_breaker'], 72: ['矮人直升机', 'gyrocopter'], 73: ['炼金术士', 'alchemist'],
+      74: ['祈求者', 'invoker'], 75: ['沉默术士', 'silencer'], 76: ['殁境神蚀者', 'obsidian_destroyer'], 77: ['狼人', 'lycan'],
+      78: ['酒仙', 'brewmaster'], 79: ['暗影恶魔', 'shadow_demon'], 80: ['独行德鲁伊', 'lone_druid'], 81: ['混沌骑士', 'chaos_knight'],
+      82: ['米波', 'meepo'], 83: ['树精卫士', 'treant'], 84: ['食人魔魔法师', 'ogre_magi'], 85: ['不朽尸王', 'undying'],
+      86: ['拉比克', 'rubick'], 87: ['干扰者', 'disruptor'], 88: ['司夜刺客', 'nyx_assassin'], 89: ['娜迦海妖', 'naga_siren'],
+      90: ['光之守卫', 'keeper_of_the_light'], 91: ['艾欧', 'wisp'], 92: ['维萨吉', 'visage'], 93: ['斯拉克', 'slark'],
+      94: ['美杜莎', 'medusa'], 95: ['巨魔战将', 'troll_warlord'], 96: ['半人马战行者', 'centaur'], 97: ['马格纳斯', 'magnataur'],
+      98: ['伐木机', 'shredder'], 99: ['钢背兽', 'bristleback'], 100: ['巨牙海民', 'tusk'], 101: ['天怒法师', 'skywrath_mage'],
+      102: ['亚巴顿', 'abaddon'], 103: ['上古巨神', 'elder_titan'], 104: ['军团指挥官', 'legion_commander'], 105: ['工程师', 'techies'],
+      106: ['灰烬之灵', 'ember_spirit'], 107: ['大地之灵', 'earth_spirit'], 108: ['孽主', 'abyssal_underlord'], 109: ['恐怖利刃', 'terrorblade'],
+      110: ['凤凰', 'phoenix'], 111: ['神谕者', 'oracle'], 112: ['寒冬飞龙', 'winter_wyvern'], 113: ['天穹守望者', 'arc_warden'],
+      114: ['齐天大圣', 'monkey_king'], 119: ['邪影芳灵', 'dark_willow'], 120: ['石鳞剑士', 'pangolier'], 121: ['天涯墨客', 'grimstroke'],
+      123: ['森海飞霞', 'hoodwink'], 126: ['虚无之灵', 'void_spirit'], 128: ['电炎绝手', 'snapfire'], 129: ['玛尔斯', 'mars'],
+      131: ['百戏大王', 'ringmaster'], 135: ['破晓辰星', 'dawnbreaker'], 136: ['玛西', 'marci'], 137: ['獸', 'primal_beast'],
+      138: ['琼英碧灵', 'muerta'], 145: ['凯', 'kez'], 155: ['朗戈', 'largo'],
+    };
+
     function heroName(id) {
-      const names = {
-        14: '帕吉', 88: '司夜刺客', 93: '斯拉克', 84: '食人魔魔法师', 74: '祈求者',
-        8: '主宰', 5: '水晶室女', 1: '敌法师', 11: '影魔', 41: '虚空假面'
-      };
-      return names[id] || ('英雄 #' + id);
+      const x = HERO_INFO[id];
+      if (x) return x[0];
+      return '英雄 #' + id;
+    }
+    function heroSlug(id) {
+      const x = HERO_INFO[id];
+      return x ? x[1] : (HERO_SLUG[id] || null);
     }
     function heroPortrait(id) {
-      const slug = HERO_SLUG[id];
+      const slug = heroSlug(id);
       if (!slug) return null;
       return 'https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/' + slug + '.png';
     }
@@ -441,7 +479,7 @@ window.__ModuleLoader__.load({
             h('div', { style: { ...hint, marginBottom: 6 } }, '最常玩的英雄（点一下让他上场）'),
             h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8 } },
               data.topHeroes.slice(0, 8).map((x) => {
-                const slug = HERO_SLUG[x.heroId];
+                const slug = heroSlug(x.heroId);
                 const slugHero = slug && bundled[slug];
                 return h('button', {
                   key: x.heroId,
