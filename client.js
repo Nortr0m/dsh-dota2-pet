@@ -219,14 +219,20 @@ window.__ModuleLoader__.load({
         if (!a) return null;
         const yaw = a.yaws && a.yaws[0];
         if (!yaw || !yaw.files || !yaw.files.length) return null;
-        return { name, files: yaw.files, fps: a.fps || 12, loop: Boolean(a.loop) };
+        return { name, files: yaw.files, fps: a.fps || 12, loop: Boolean(a.loop),
+                 build: manifest.build || '' };
       }, [manifest, action, idleName]);
+
+      /* 帧 URL：带上 build 戳做缓存失效（重烘后文件名不变，否则浏览器会用一周的旧缓存） */
+      const frameUrl = React.useCallback((f) => {
+        return FRAMES + hero + '/' + f + (clip && clip.build ? '?v=' + encodeURIComponent(clip.build) : '');
+      }, [hero, clip]);
 
       /* 预加载当前动作的所有帧 */
       React.useEffect(() => {
         if (!clip) return;
         clip.files.forEach((f) => {
-          const url = FRAMES + hero + '/' + f;
+          const url = frameUrl(f);
           if (imgCache.current[url]) return;
           const im = new window.Image();
           im.src = url;
@@ -304,7 +310,7 @@ window.__ModuleLoader__.load({
       if (p.x == null || p.y == null) { style.right = 48; style.bottom = 72; }
       else { style.left = Math.max(0, Math.min(window.innerWidth - size, p.x)); style.top = Math.max(0, Math.min(window.innerHeight - size, p.y)); }
 
-      const src = clip ? FRAMES + hero + '/' + clip.files[frame % clip.files.length] : null;
+      const src = clip ? frameUrl(clip.files[frame % clip.files.length]) : null;
 
       return h('div', { className: 'd2p-root' },
         src ? h('div', {

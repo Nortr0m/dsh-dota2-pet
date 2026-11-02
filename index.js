@@ -378,7 +378,9 @@ export function apply(ctx) {
           res.writeHead(200, {
             'Content-Type': type,
             'Content-Length': String(buf.length),
-            'Cache-Control': 'public, max-age=604800'
+            // manifest 必须每次取新的（它带 build 戳，前端用它做帧的缓存失效）；
+            // 帧文件重烘后**文件名不变**，所以靠 ?v=<build> 击穿缓存，这里给长缓存
+            'Cache-Control': ext === '.json' ? 'no-cache' : 'public, max-age=604800'
           });
           res.end(buf);
         } catch { notFound(res); }

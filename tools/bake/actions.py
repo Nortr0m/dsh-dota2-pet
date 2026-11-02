@@ -234,11 +234,14 @@ def bake(m, outdir, items=None, size=220, yaw=25.0, pitch=6.0, yaws=1, loops=Non
     PowerShell 桌面窗口脚本），这样前端右键菜单可以按英雄实际拥有的动作动态生成。
     """
     import json as _json
+    import datetime as _dt
     items = items or BAKE_SET
     loops = loops or {}
     cats = cats or {}
     os.makedirs(outdir, exist_ok=True)
-    manifest = {"size": size, "pitch": pitch, "yaws": yaws, "actions": {}}
+    # build 戳：帧文件名不变，前端要靠它做缓存失效，否则浏览器缓存旧图（路由给了 max-age）
+    manifest = {"build": _dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S"),
+                "size": size, "pitch": pitch, "yaws": yaws, "actions": {}}
     for anim, n in items:
         if anim not in m.anims:
             log("跳过（模型里没有）: %s" % anim)
