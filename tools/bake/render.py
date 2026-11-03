@@ -270,11 +270,14 @@ class Model:
 
         self.tex = []      # baseColor
         self.ntex = []     # normal map（切线空间）
+        self.stex = []     # specular 遮罩（KHR_materials_specular.specularTexture）
         self.cut = []      # alphaCutoff，MASK 材质用它而不是写死阈值
         for mt in j.get("materials", []):
             pbr = mt.get("pbrMetallicRoughness", {})
             self.tex.append(load_ref(pbr.get("baseColorTexture")))
             self.ntex.append(load_ref(mt.get("normalTexture")))
+            km = (mt.get("extensions") or {}).get("KHR_materials_specular") or {}
+            self.stex.append(load_ref(km.get("specularTexture")))
             self.cut.append(float(mt.get("alphaCutoff", 0.5) or 0.5))
 
     def vertex_colors(self):
@@ -402,8 +405,13 @@ def _sample_tex(img, u, v):
 
 
 def rasterize(tri, nrm_tri, uv_tri, tan_tri, mat_tri, tex, ntex, cuts, idx, W, H, lights=None,
-              amb=0.54, alpha_test=0.35):
-    """逐像素插值法线/切线/UV，采样 baseColor + 法线贴图并做光照。"""
+              amb=0.54, alpha_test=0.35, stex=None, view=None, spec_pow=26.0, spec_amt=0.6,
+              rim_amt=0.26):
+    """逐像素插值法线/切线/UV，采样 baseColor + 法线贴图 + 高光遮罩并做光照。
+
+    高光与边缘光是社区公认自研渲染器最缺的两项（dota2-model-viewer 的 Known issues
+    明确写了 specular / rim 缺失），补上之后"塑料平"的观感会明显改善。
+    """
     img = np.zeros((H, W, 3), np.float64)
     zbuf = np.full((H, W), np.inf)
     mask = np.zeros((H, W), bool)
@@ -462,7 +470,31 @@ def rasterize(tri, nrm_tri, uv_tri, tan_tri, mat_tri, tex, ntex, cuts, idx, W, H
         lam = np.zeros(nd.shape[:2])
         for lv, lw in (lights or []):
             lam += np.clip(nd @ lv, 0.0, 1.0) * lw
-        shade = np.clip(amb + 1.15 * lam, 0.0, 1.60)
+        shade = amb + 1.15 * lam
+
+        # 高光：Blinn-Phong 半角向量，强度由材质自带的 specularTexture 当遮罩
+        if view is not None and lights:
+            lv, lw = lights[0]
+            hv = lv + view
+            hn = float(np.linalg.norm(hv))
+            if hn > 1e-6:
+                hv = hv / hn
+                sp = np.clip(nd @ hv, 0.0, 1.0) ** spec_pow
+                specmask = 1.0
+                st = stex[mat_tri[i]] if (stex and 0 <= mat_tri[i] < len(stex)) else None
+                if st is not None:
+                    sh, sw = st.shape[:2]
+                    ss = _sample_tex(st, (uv[..., 0] % 1.0) * (sw - 1),
+                                     (uv[..., 1] % 1.0) * (sh - 1))
+                    specmask = ss[..., 0] / 255.0
+                shade = shade + sp * specmask * spec_amt * lw
+
+        # 边缘光：正视处为 0、掠射处最强，用来勾勒轮廓
+        if view is not None:
+            rim = (1.0 - np.clip(np.abs(nd @ view), 0.0, 1.0)) ** 3.0
+            shade = shade + rim * rim_amt
+
+        shade = np.clip(shade, 0.0, 1.9)
 
         t = tex[mat_tri[i]] if 0 <= mat_tri[i] < len(tex) else None
         if t is not None:
@@ -563,7 +595,8 @@ def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
     if os.environ.get('D2_SHOW_NORMALS'):
         print('  法线朝向: 原始lam均值=%.3f 翻转后=%.3f -> %s' % (fwd, bwd, '已翻转' if flipped else '保持'))
     rgb, mask = rasterize(tri[keep], nrm_tri[keep], uv_tri[keep], tan_tri[keep], mat_tri[keep],
-                          tex, ntex, model.cut, model.TRIS[keep], W, H, lights)
+                          tex, ntex, model.cut, model.TRIS[keep], W, H, lights,
+                          stex=(model.stex if textured else None), view=to_eye)
     img = Image.fromarray(np.clip(rgb, 0, 255).astype(np.uint8), "RGB").resize((size, size), Image.LANCZOS)
     al = Image.fromarray((mask * 255).astype(np.uint8), "L").resize((size, size), Image.LANCZOS)
     out = img.convert("RGBA")

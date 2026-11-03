@@ -2,6 +2,15 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.2.2] - 2026-11-03
+
+### 新增
+- **渲染补上高光与边缘光**：社区公认自研渲染器与游戏观感差距的主因就是这两项
+  （dota2-model-viewer 的 Known issues 明确写了 specular / rim 缺失）。
+  高光用 Blinn-Phong 半角向量，强度由材质自带的 `KHR_materials_specular.specularTexture` 当遮罩；
+  边缘光按 `(1-|N·V|)^3` 勾勒轮廓。实测：平均亮度 71.7→78.3、高光像素占比 7.2%→9.85%、
+  34.3% 像素受影响；每帧渲染 1.10s→1.36s（仅影响离线烘焙）
+
 ## [0.2.1] - 2026-11-03
 
 ### 新增
@@ -70,7 +79,8 @@
 - Windows PowerShell 5.1 读取 `.ps1` 的编码问题：脚本改为纯 ASCII 内容并带 UTF-8 BOM，否则中文字符串会被按 GBK 解码导致语法错误
 - 路由注册规避宿主 `prefix` 只对完全一致路径生效的限制：带查询串的接口注册裸路径，静态帧按文件逐条注册精确路由
 
-[未发布]: https://github.com/Nortrom/dsh-dota2-pet/compare/v0.2.1...HEAD
+[未发布]: https://github.com/Nortrom/dsh-dota2-pet/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.2.2
 [0.2.1]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.1.0

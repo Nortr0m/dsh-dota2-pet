@@ -1,7 +1,7 @@
 {
- "build": "20261102T160416",
+ "build": "20261103T003508",
  "size": 220,
- "pitch": 6,
+ "pitch": 6.0,
  "yaws": 2,
  "actions": {
   "idle_anim": {
@@ -11,7 +11,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180,
+     "yaw": -180.0,
      "files": [
       "idle_anim_y00_f000.png",
       "idle_anim_y00_f001.png",
@@ -40,7 +40,7 @@
      ]
     },
     {
-     "yaw": 0,
+     "yaw": 0.0,
      "files": [
       "idle_anim_y01_f000.png",
       "idle_anim_y01_f001.png",
@@ -70,7 +70,7 @@
     }
    ],
    "duration": 1.5,
-   "fps": 16
+   "fps": 16.0
   },
   "run": {
    "frames": 16,
@@ -79,7 +79,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180,
+     "yaw": -180.0,
      "files": [
       "run_y00_f000.png",
       "run_y00_f001.png",
@@ -100,7 +100,7 @@
      ]
     },
     {
-     "yaw": 0,
+     "yaw": 0.0,
      "files": [
       "run_y01_f000.png",
       "run_y01_f001.png",
@@ -122,7 +122,7 @@
     }
    ],
    "duration": 0.8,
-   "fps": 20
+   "fps": 20.0
   },
   "attack_anim": {
    "frames": 12,
@@ -131,7 +131,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180,
+     "yaw": -180.0,
      "files": [
       "attack_anim_y00_f000.png",
       "attack_anim_y00_f001.png",
@@ -148,7 +148,7 @@
      ]
     },
     {
-     "yaw": 0,
+     "yaw": 0.0,
      "files": [
       "attack_anim_y01_f000.png",
       "attack_anim_y01_f001.png",
@@ -165,8 +165,8 @@
      ]
     }
    ],
-   "duration": 1,
-   "fps": 12
+   "duration": 1.0,
+   "fps": 12.0
   },
   "pounce_anim": {
    "frames": 14,
@@ -175,7 +175,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180,
+     "yaw": -180.0,
      "files": [
       "pounce_anim_y00_f000.png",
       "pounce_anim_y00_f001.png",
@@ -194,7 +194,7 @@
      ]
     },
     {
-     "yaw": 0,
+     "yaw": 0.0,
      "files": [
       "pounce_anim_y01_f000.png",
       "pounce_anim_y01_f001.png",
@@ -223,7 +223,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180,
+     "yaw": -180.0,
      "files": [
       "dark_pact_anim_y00_f000.png",
       "dark_pact_anim_y00_f001.png",
@@ -242,7 +242,7 @@
      ]
     },
     {
-     "yaw": 0,
+     "yaw": 0.0,
      "files": [
       "dark_pact_anim_y01_f000.png",
       "dark_pact_anim_y01_f001.png",
@@ -271,7 +271,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180,
+     "yaw": -180.0,
      "files": [
       "shadow_dance_y00_f000.png",
       "shadow_dance_y00_f001.png",
@@ -288,7 +288,7 @@
      ]
     },
     {
-     "yaw": 0,
+     "yaw": 0.0,
      "files": [
       "shadow_dance_y01_f000.png",
       "shadow_dance_y01_f001.png",
@@ -306,7 +306,7 @@
     }
    ],
    "duration": 0.8,
-   "fps": 15
+   "fps": 15.0
   },
   "death": {
    "frames": 16,
@@ -315,7 +315,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180,
+     "yaw": -180.0,
      "files": [
       "death_y00_f000.png",
       "death_y00_f001.png",
@@ -336,7 +336,7 @@
      ]
     },
     {
-     "yaw": 0,
+     "yaw": 0.0,
      "files": [
       "death_y01_f000.png",
       "death_y01_f001.png",
@@ -367,7 +367,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180,
+     "yaw": -180.0,
      "files": [
       "victory_y00_f000.png",
       "victory_y00_f001.png",
@@ -392,7 +392,7 @@
      ]
     },
     {
-     "yaw": 0,
+     "yaw": 0.0,
      "files": [
       "victory_y01_f000.png",
       "victory_y01_f001.png",
