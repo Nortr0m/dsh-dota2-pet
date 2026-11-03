@@ -105,7 +105,14 @@ function Get-Clip([string]$name) {
   if (-not $name) { return $null }
   $a = $manifest.actions.$name
   if (-not $a) { return $null }
-  $yaw = $a.yaws[0]
+  # Pick the yaw closest to the front (smallest absolute yaw). Taking yaws[0] used to
+  # select -180 (the back of the head), so the pet showed its back all the time.
+  $yaw = $null
+  foreach ($y in $a.yaws) {
+    if (-not $y.files) { continue }
+    if (-not $yaw) { $yaw = $y; continue }
+    if ([Math]::Abs([double]$y.yaw) -lt [Math]::Abs([double]$yaw.yaw)) { $yaw = $y }
+  }
   if (-not $yaw -or -not $yaw.files) { return $null }
   $fps = 12.0
   if ($a.fps) { $fps = [double]$a.fps }

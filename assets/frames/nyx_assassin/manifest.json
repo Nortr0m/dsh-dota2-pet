@@ -1,5 +1,5 @@
 {
- "build": "20261103T003744",
+ "build": "20261103T113851",
  "size": 220,
  "pitch": 6.0,
  "yaws": 2,
@@ -11,7 +11,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180.0,
+     "yaw": 0.0,
      "files": [
       "idle_anim_y00_f000.png",
       "idle_anim_y00_f001.png",
@@ -48,7 +48,7 @@
      ]
     },
     {
-     "yaw": 0.0,
+     "yaw": 180.0,
      "files": [
       "idle_anim_y01_f000.png",
       "idle_anim_y01_f001.png",
@@ -95,7 +95,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180.0,
+     "yaw": 0.0,
      "files": [
       "run_anim_y00_f000.png",
       "run_anim_y00_f001.png",
@@ -113,7 +113,7 @@
      ]
     },
     {
-     "yaw": 0.0,
+     "yaw": 180.0,
      "files": [
       "run_anim_y01_f000.png",
       "run_anim_y01_f001.png",
@@ -141,7 +141,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180.0,
+     "yaw": 0.0,
      "files": [
       "attack_anim_y00_f000.png",
       "attack_anim_y00_f001.png",
@@ -161,7 +161,7 @@
      ]
     },
     {
-     "yaw": 0.0,
+     "yaw": 180.0,
      "files": [
       "attack_anim_y01_f000.png",
       "attack_anim_y01_f001.png",
@@ -191,7 +191,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180.0,
+     "yaw": 0.0,
      "files": [
       "spiked_carapace_anim_y00_f000.png",
       "spiked_carapace_anim_y00_f001.png",
@@ -208,7 +208,7 @@
      ]
     },
     {
-     "yaw": 0.0,
+     "yaw": 180.0,
      "files": [
       "spiked_carapace_anim_y01_f000.png",
       "spiked_carapace_anim_y01_f001.png",
@@ -235,7 +235,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180.0,
+     "yaw": 0.0,
      "files": [
       "cast5_burrow_end_y00_f000.png",
       "cast5_burrow_end_y00_f001.png",
@@ -252,7 +252,7 @@
      ]
     },
     {
-     "yaw": 0.0,
+     "yaw": 180.0,
      "files": [
       "cast5_burrow_end_y01_f000.png",
       "cast5_burrow_end_y01_f001.png",
@@ -279,7 +279,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180.0,
+     "yaw": 0.0,
      "files": [
       "death_y00_f000.png",
       "death_y00_f001.png",
@@ -316,7 +316,7 @@
      ]
     },
     {
-     "yaw": 0.0,
+     "yaw": 180.0,
      "files": [
       "death_y01_f000.png",
       "death_y01_f001.png",
@@ -363,7 +363,7 @@
    "categoryEn": "other",
    "yaws": [
     {
-     "yaw": -180.0,
+     "yaw": 0.0,
      "files": [
       "victory_y00_f000.png",
       "victory_y00_f001.png",
@@ -385,7 +385,7 @@
      ]
     },
     {
-     "yaw": 0.0,
+     "yaw": 180.0,
      "files": [
       "victory_y01_f000.png",
       "victory_y01_f001.png",

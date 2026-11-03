@@ -217,10 +217,13 @@ window.__ModuleLoader__.load({
         const name = acts[action] ? action : idleName;
         const a = acts[name];
         if (!a) return null;
-        const yaw = a.yaws && a.yaws[0];
-        if (!yaw || !yaw.files || !yaw.files.length) return null;
+        // 朝向：取最接近正面（|yaw| 最小）的那一组。
+        // 曾经直接用 yaws[0]，而烘焙把 -180（背面）排在第一，桌宠就一直在用后脑勺示人。
+        const list = (a.yaws || []).filter((y) => y && y.files && y.files.length);
+        if (!list.length) return null;
+        const yaw = list.slice().sort((p, q) => Math.abs(p.yaw || 0) - Math.abs(q.yaw || 0))[0];
         return { name, files: yaw.files, fps: a.fps || 12, loop: Boolean(a.loop),
-                 build: manifest.build || '' };
+                 yaw: yaw.yaw, build: manifest.build || '' };
       }, [manifest, action, idleName]);
 
       /* 帧 URL：带上 build 戳做缓存失效（重烘后文件名不变，否则浏览器会用一周的旧缓存） */

@@ -250,7 +250,9 @@ def bake(m, outdir, items=None, size=220, yaw=25.0, pitch=6.0, yaws=1, loops=Non
         entry = {"frames": n, "loop": bool(loops.get(anim)),
                  "category": cat, "categoryEn": CAT_EN.get(cat, 'other'), "yaws": []}
         for yi in range(max(1, yaws)):
-            yaw_i = yaw if yaws == 1 else (-180.0 + 360.0 * yi / yaws)
+            # 朝向从正面（0°）开始往后排：曾经的 -180 起始会把"背面"排在 yaws[0]，
+            # 而消费方（前端 / 桌面窗口）默认取第一组，结果桌宠一直用背面示人。
+            yaw_i = yaw if yaws == 1 else (360.0 * yi / yaws)
             poses = frames_of(m, anim, n, exclusive=True)
             names = []
             for i, pose in enumerate(poses):
