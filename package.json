@@ -44,11 +44,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nortrom/dsh-dota2-pet.git"
+    "url": "git+https://github.com/Nortr0m/dsh-dota2-pet.git"
   },
   "bugs": {
-    "url": "https://github.com/Nortrom/dsh-dota2-pet/issues"
+    "url": "https://github.com/Nortr0m/dsh-dota2-pet/issues"
   },
-  "homepage": "https://github.com/Nortrom/dsh-dota2-pet#readme",
-  "author": "Nortrom"
+  "homepage": "https://github.com/Nortr0m/dsh-dota2-pet#readme",
+  "author": "Nortr0m"
 }

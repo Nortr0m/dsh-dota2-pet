@@ -79,8 +79,8 @@
 - Windows PowerShell 5.1 读取 `.ps1` 的编码问题：脚本改为纯 ASCII 内容并带 UTF-8 BOM，否则中文字符串会被按 GBK 解码导致语法错误
 - 路由注册规避宿主 `prefix` 只对完全一致路径生效的限制：带查询串的接口注册裸路径，静态帧按文件逐条注册精确路由
 
-[未发布]: https://github.com/Nortrom/dsh-dota2-pet/compare/v0.2.2...HEAD
-[0.2.2]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.2.2
-[0.2.1]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.2.1
-[0.2.0]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.2.0
-[0.1.0]: https://github.com/Nortrom/dsh-dota2-pet/releases/tag/v0.1.0
+[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.2
+[0.2.1]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.1
+[0.2.0]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.0
+[0.1.0]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.1.0
