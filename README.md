@@ -5,7 +5,9 @@
 > Powered by [Source 2 Viewer](https://s2v.app) ([ValveResourceFormat](https://github.com/ValveResourceFormat/ValveResourceFormat))。
 > 内置动作帧与饰品数据都由它从本机游戏文件解析导出；Source 2 格式没有官方文档，这些能力全部来自社区逆向。
 >
-> 社区做法的调研笔记见 [`docs/research-source2-models.md`](./docs/research-source2-models.md)。
+> 社区做法的调研笔记见 [`docs/research-source2-models.md`](./docs/research-source2-models.md)；
+> 饰品换装与"能否从创意工坊加载订阅内容"的可研见 [`docs/research-cosmetics-workshop.md`](./docs/research-cosmetics-workshop.md)
+> ——结论：**Dota 2 饰品不在创意工坊里，走本机 VPK 批量导出**，一个英雄全部饰品约 6 秒。
 
 ## 安装
 

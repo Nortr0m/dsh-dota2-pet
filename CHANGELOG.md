@@ -2,6 +2,38 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.2.6] - 2026-11-04
+
+### 修复
+- **武器悬浮**（0.2.5 修成"不落地"后又变成悬浮在肩侧）。原因是**变换被应用了两次**：
+  蒙皮时骨骼矩阵已经承担了全部变换（`weapon_2` 的逆绑定矩阵实测是单位阵），
+  而 0.2.5 又先用姿势矩阵预变换了一次顶点。现在改为**只绑骨骼、不预变换**。
+- **武器挂点改用游戏自己的统一规则**（用户问"是每个英雄独自设定还是统一设定"，
+  答案在客户端文件里，是统一的）：
+
+  > **装备模型自带的骨骼里，与英雄骨架同名的那根，就是它的挂点。**
+
+  实测证据（`VRF -b DATA` 读 `m_modelSkeleton.m_boneName`）：
+
+  | 英雄 | 武器模型骨架 | 命中英雄骨架 |
+  |---|---|---|
+  | 斯拉克 | `root`, `weapon_2` | `weapon_2` ✓ |
+  | 食人魔 | `weapon3_0` | `weapon3_0` ✓ |
+  | 司夜刺客 | `root`, `ArachnidLeg_*` | `ArachnidLeg_0_C_L` ✓ |
+
+  所以不再需要按英雄写死映射，也不需要靠画面位置去猜；`weapon_attach_bone()` 会
+  从 VPK 读该装备的 DATA 块、取它的骨架骨骼名，与英雄骨架求交集。
+
+- **坐标约定并不统一**（这也是这个 bug 反复的根源）：同一条挂点规则下，
+  斯拉克与食人魔的武器局部坐标是"相对挂点"（绑定后中心≈骨骼位置），
+  而司夜刺客的是"绝对坐标"（局部中心 y=1.55 已在身体高度），
+  后者仍需逐英雄的额外偏移，目前列为已知问题。
+
+### 修复（工程）
+- `actions.py` 补上漏掉的 `import subprocess`，并把候选循环里的
+  `except Exception: continue` 改为**打印错误**——这个静默吞异常曾把 `NameError`
+  藏成"读了 VPK 却永远拿不到骨骼名"，浪费了大量排查时间
+
 ## [0.2.5] - 2026-11-03
 
 ### 修复
@@ -130,8 +162,8 @@
 - Windows PowerShell 5.1 读取 `.ps1` 的编码问题：脚本改为纯 ASCII 内容并带 UTF-8 BOM，否则中文字符串会被按 GBK 解码导致语法错误
 - 路由注册规避宿主 `prefix` 只对完全一致路径生效的限制：带查询串的接口注册裸路径，静态帧按文件逐条注册精确路由
 
-[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.5...HEAD
-[0.2.5]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.5
+[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.6...HEAD
+[0.2.6]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.6
 [0.2.2]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.2
 [0.2.1]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.0

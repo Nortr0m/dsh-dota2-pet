@@ -21,6 +21,7 @@ Dota 2 英雄"动作库"：从模型文件里读取游戏里真正能做的动�
 import argparse
 import json
 import os
+import subprocess
 import sys
 
 import numpy as np  # noqa: E402
@@ -486,30 +487,142 @@ def read_item_slots(hero_file):
     return out
 
 
-def default_parts(hero, items_path, model_dir=None):
+def weapon_attach_bone(weapon_glb, base_glb, vpk=None, gameinfo=None, model_path=None):
+    """用**装备模型自带的骨架**推出它该挂到本体哪根骨骼上（这是游戏的统一规则）。
+
+    依据（直接从客户端文件读出来的）：
+      斯拉克武器  DATA.m_modelSkeleton.m_boneName = ['root', 'weapon_2']
+      食人魔武器                                   = ['weapon3_0']
+      本体模型同样有这些骨骼（斯拉克 48 根里有 weapon_2，食人魔里也有 weapon3_0）。
+    即：**装备模型里与英雄骨架同名的骨骼就是挂点**，引擎按名字对接。
+    所以既不需要按英雄写死映射，也不需要靠画面位置去猜。
+
+    注意：不能从导出的 GLB 里读这些骨骼名——VRF 导出装备时把骨架丢了（skins 为空），
+    必须回到 VPK 读该模型的 DATA 块。
+    """
+    try:
+        bm = render.Model(base_glb)
+    except Exception:
+        return None
+    body_set = {((bm.nodes[int(x)].get("name") or "").lower()): (bm.nodes[int(x)].get("name") or "")
+                for x in bm.skin_joints}
+    if not body_set:
+        return None
+
+    wnames = []
+    try:
+        wm = render.Model(weapon_glb)
+        if len(wm.skin_joints):
+            wnames = [wm.nodes[int(x)].get("name") or "" for x in wm.skin_joints]
+    except Exception:
+        wnames = []
+
+    if not wnames and vpk and gameinfo:
+        wnames = _vpk_bone_names(weapon_glb, vpk, gameinfo, model_path=model_path) or []
+
+    hits = [n for n in wnames if n.lower() in body_set and n.lower() != "root"]
+    if not hits:
+        return None
+    hits.sort(key=lambda s: (0 if "weapon" in s.lower() else 1, len(s)))
+    return body_set[hits[0].lower()]
+
+
+def _vpk_bone_names(glb, vpk, gameinfo, model_path=None):
+    """从 VPK 读某个装备模型的 DATA 块，抠出它骨架的骨骼名列表。
+
+    model_path 优先——调用方本来就知道武器的真实 VPK 路径（r['model']），
+    从 GLB 文件名反推路径是不可靠的（缓存名把目录拼平了）。
+    """
+    exe = os.path.join(HERE, "tools", "Source2Viewer-CLI.exe")
+    if not os.path.exists(exe):
+        return []
+    import sys as _sys
+    if os.environ.get("D2_DEBUG_ATTACH"):
+        print("[attach] exe=%s vpk=%s model_path=%s" % (exe, vpk, model_path), file=_sys.stderr)
+    cands = []
+    if model_path:
+        cands.append(model_path.replace("\\", "/") + ("" if model_path.endswith("_c") else "_c"))
+    stem = os.path.splitext(os.path.basename(glb))[0]
+    parts = stem.split("_")
+    for i in range(1, len(parts)):
+        cands.append("models/items/" + "/".join(parts[:i]) + "/" + "/".join(parts[i:]) + ".vmdl_c")
+        cands.append("models/heroes/" + "/".join(parts[:i]) + "/" + "/".join(parts[i:]) + ".vmdl_c")
+    for cand in cands:
+        cmd = [exe, "-i", os.path.join(vpk, "pak01_dir.vpk"),
+               "--vpk_filepath", cand, "-b", "DATA", "--game", gameinfo]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=90)
+        except Exception as exc:
+            # 不再静默吞异常：这里曾经因为漏了 `import subprocess`、被 `except: continue`
+            # 吞掉 NameError，表现成"读了 VPK 但永远拿不到骨骼名"，排查了很久。
+            print("[attach] 读取 %s 失败: %s" % (cand, exc), file=sys.stderr)
+            continue
+        ok = "--- Data for block" in (r.stdout or "")
+        if os.environ.get("D2_DEBUG_ATTACH"):
+            print("[attach] cand=%s ok=%s len=%d" % (cand, ok, len(r.stdout or "")), file=_sys.stderr)
+        if ok:
+            names = _parse_bone_names(r.stdout)
+            if os.environ.get("D2_DEBUG_ATTACH"):
+                print("[attach] parsed=%s" % (names,), file=_sys.stderr)
+            if names:
+                return names
+    return []
+
+
+def _parse_bone_names(text):
+    """从 VRF 的 DATA dump 文本里抠出 m_boneName 列表。
+
+    VRF 的 KV3 dump 长这样（键**不带引号**）：
+        m_boneName =
+        [
+            "root",
+            "weapon_2",
+        ]
+    """
+    import re
+    m = re.search(r'\bm_boneName\s*=\s*\[', text)
+    if not m:
+        return []
+    j = text.find("[", m.end() - 1)
+    k = text.find("]", j) if j >= 0 else -1
+    if j < 0 or k < 0:
+        return []
+    out = []
+    for tok in text[j + 1:k].split(","):
+        tok = tok.strip().strip('"').strip()
+        if tok:
+            out.append(tok)
+    return out
+
+
+def default_parts(hero, items_path, model_dir=None, base_glb=None, vpk=None, gameinfo=None):
     """导出该英雄的默认部件（兜帽/披风/护腕/肩甲/武器）GLB。
 
     model_dir：本体模型所在目录名。英雄 slug 不一定等于模型目录
     （司夜刺客 nyx_assassin 的模型在 models/heroes/nerubian_assassin/），
     所以从本体 GLB 的文件名推最稳。
+
+    返回 (部件列表, 挂点表)。挂点表用于把武器这类"没有蒙皮数据、顶点在局部空间"的部件
+    绑到挂点骨骼上；不绑它会停在角色脚底。
     """
     import wardrobe
     w = wardrobe.Wardrobe(items_path)
     out, attach = [], {}
-
-    def norm(s):
-        return ''.join(ch for ch in str(s).lower() if ch.isalnum())
 
     for r in w.loadout(hero, defaults=True, model_dir=model_dir):
         glb, ok = wardrobe.export_model(r['model'])
         if not ok:
             continue
         out.append(glb)
-        slot = r.get('slot') or ''
-        # 武器类槽位在源文件里没有蒙皮数据、顶点还在局部空间（中心在世界原点），
-        # 必须显式挂到武器的挂点骨骼上，否则它会静止在角色脚底（实测就是这样）。
-        if 'weapon' in slot.lower():
-            attach[glb] = 'weapon_2'
+        if 'weapon' in (r.get('slot') or '').lower():
+            bone = weapon_attach_bone(glb, base_glb, vpk=vpk, gameinfo=gameinfo,
+                                      model_path=r.get('model')) if base_glb else None
+            if bone:
+                attach[glb] = bone
+                print("  武器挂点: %s <- %s" % (bone, os.path.basename(glb)))
+            else:
+                print("  ⚠ %s 的武器没能在本体骨架里找到同名骨骼，武器可能无法定位" % hero)
     return out, attach
 
 

@@ -1,6 +1,6 @@
 {
   "name": "dsh-dota2-pet",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Dota 2 桌宠：读本机游戏模型/动作，配好账号后按你最近的英雄出场",
   "type": "module",
   "license": "MIT",

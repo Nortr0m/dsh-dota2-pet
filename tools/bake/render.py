@@ -231,36 +231,18 @@ class Model:
                         bind_slot = s
                         break
             if bind_slot is not None:
-                # 挂在挂点上的部件：把顶点搬到挂点骨骼处，再刚性绑到该骨骼。
+                # 挂在挂点上的部件：**只把权重绑到挂点骨骼，不要预变换顶点**。
                 #
-                # 注意：不能用 _world({}) 的绑定姿势——武器的挂点骨骼（如 weapon_2）
-                # 在绑定姿势里恰好位于原点 (0,0,0)，乘上去等于没变换。挂点骨骼的真正位置
-                # 只在**动画**里才有意义，所以这里取"第一段动画的首帧"作为参考姿势。
-                M = None
-                ref = getattr(self, "attach_ref_pose", None)
-                if ref is not None:
-                    M = ref.get(int(self.skin_joints[bind_slot]))
-                if M is None:
-                    for aname in self.anims:
-                        try:
-                            w2 = self._world(self.sample(aname, 0.0))
-                        except Exception:
-                            continue
-                        cand = w2.get(int(self.skin_joints[bind_slot]))
-                        if cand is not None and float(np.linalg.norm(cand[:3, 3])) > 0.05:
-                            M = cand
-                            break
-                if M is None:
-                    M = world[int(self.skin_joints[bind_slot])]
-                ph = np.concatenate([part_pos, np.ones((n, 1))], axis=1)
-                part_pos = (M @ ph.T).T[:, :3]
-                nh = np.concatenate([pm.NRM, np.zeros((n, 1))], axis=1)
-                part_nrm = (M @ nh.T).T[:, :3]
-                part_nrm /= np.maximum(np.linalg.norm(part_nrm, axis=1, keepdims=True), 1e-9)
+                # 踩过的坑：一开始先用挂点骨骼的姿势矩阵把顶点搬过去、再绑骨骼，
+                # 结果武器悬浮在肩上方（画面纵向 21%，应约 40%）——因为蒙皮时骨骼
+                # 矩阵已经承担了全部变换（weapon_2 的逆绑定矩阵实测就是单位阵），
+                # 预变换等于把变换做了两遍。
+                # 武器源文件里没有蒙皮数据、顶点本来就在局部空间，正好只差"绑骨骼"这一步。
                 j4 = np.stack([np.full(n, bind_slot, np.int64), np.zeros(n, np.int64),
                                np.zeros(n, np.int64), np.zeros(n, np.int64)], axis=1)
                 w4 = np.zeros((n, 4))
                 w4[:, 0] = 1.0
+                part_nrm = pm.NRM
             elif transfer_weights and have_skin:
                 # 最近邻权重传递：抄最近本体顶点的骨骼与权重
                 d = ((pm.POS[:, None, :] - body_POS[None, :, :]) ** 2).sum(axis=2)
@@ -587,20 +569,29 @@ def rasterize(tri, nrm_tri, uv_tri, tan_tri, mat_tri, tex, ntex, cuts, idx, W, H
     return img, mask
 
 
-def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
-           light=(0.42, 0.78, 0.46), ss=2, textured=True, framing="full"):
-    pos, nrm = model.pose_vertices(over)
-    if len(pos) == 0:
-        return Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    lo, hi = pos.min(axis=0), pos.max(axis=0)
+def _bind_anchor(model, framing="full"):
+    """取景锚点 (center, radius)，**只按绑定姿势算**，整个动作期间复用同一个值。
+
+    这是"人物以自身为中心晃动"的关键。原先 render() 每帧用当前帧的包围盒重算
+    center/radius，等于相机每帧重新瞄准：idle 的注视点就会飘 dz=0.36，而相机在
+    yaw=25° 的斜侧位，目标沿深度移动会被透视投影换算成横向位移——于是人物看起来
+    "绕着空间里某个点甩"，而不是自身在晃动（实测 idle 抖 9x14 px、attack 抖 77x19 px）。
+
+    锚点缓存挂在模型上，并以顶点数为键——merge_parts() 会改变顶点数，据此自动失效。
+    """
+    cache = getattr(model, "_anchor_cache", None)
+    if cache and cache[0] == len(model.POS) and cache[1] == framing:
+        return cache[2][0], cache[2][1]
+
+    lo, hi = model.POS.min(axis=0), model.POS.max(axis=0)
     center = (lo + hi) / 2.0
-    radius = max(np.linalg.norm(hi - lo) / 2.0, 1e-3)
+    radius = max(float(np.linalg.norm(hi - lo)) / 2.0, 1e-3)
 
     if framing == "portrait":
-        # 对准头部骨骼做胸像取景：官方头像就是这种构图
+        # 对准头部骨骼做胸像取景：官方头像就是这种构图（同样取绑定姿势）
         body_h = float(hi[1] - lo[1])
-        head_y = lo[1] + 0.86 * body_h
-        world = getattr(model, "last_world", {}) or {}
+        head_y = float(lo[1] + 0.86 * body_h)
+        world = model._world({})
         for ni, nd in enumerate(model.nodes):
             nm = (nd.get("name") or "").lower()
             if "head" in nm and "hitloc" not in nm and "look" not in nm and ni in world:
@@ -608,6 +599,51 @@ def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
                 break
         center = np.array([center[0], head_y, center[2]])
         radius = max(body_h * 0.30, 1e-3)
+
+    model._anchor_cache = (len(model.POS), framing, (center, radius))
+    return center, radius
+
+
+def _root_xz_delta(model, over):
+    """root 骨骼相对绑定姿势的 XZ 位移（root motion），Y 不动。
+
+    跑动/突进这类动作，root 会沿 Z 走出 7.6 / 2.2 个单位；桌宠要的是**原地**做动作，
+    所以把这段平移从顶点上扣掉。身体上下起伏在 Y 上，保留，那正是自然的晃动。
+    """
+    if not len(model.skin_joints):
+        return None
+    names = [model.nodes[int(n)].get("name") or "" for n in model.skin_joints]
+    if "root" not in names:
+        return None
+    node = int(model.skin_joints[names.index("root")])
+    bind = model._world({})
+    cur = getattr(model, "last_world", None) or {}
+    if node not in bind or node not in cur:
+        return None
+    d = cur[node][:3, 3] - bind[node][:3, 3]
+    d[1] = 0.0
+    return d
+
+
+def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
+           light=(0.42, 0.78, 0.46), ss=2, textured=True, framing="full", plant=True):
+    """渲染一帧。
+
+    plant=True：扣掉 root 骨骼在 XZ 上的位移（root motion），让人物**原地**做动作。
+    不做这一步，run/attack 的 root 会沿 Z 走出 7.6 / 2.2 个单位，人物直接跑出画面。
+    Y 方向保留，所以身体的起伏（这才是自然的"人物自身晃动"）不会被抹掉。
+    """
+    pos, nrm = model.pose_vertices(over)
+    if len(pos) == 0:
+        return Image.new("RGBA", (size, size), (0, 0, 0, 0))
+
+    # 取景锚点一律取绑定姿势并全程复用，见 _bind_anchor 的说明
+    center, radius = _bind_anchor(model, framing)
+
+    if plant:
+        d = _root_xz_delta(model, over)
+        if d is not None:
+            pos = pos - d
 
     ya, pa = math.radians(yaw), math.radians(pitch)
     dist = radius / math.tan(math.radians(fov) / 2) * 1.05
