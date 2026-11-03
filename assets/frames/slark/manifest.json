@@ -1,5 +1,5 @@
 {
- "build": "20261103T135449",
+ "build": "20261103T153737",
  "size": 220,
  "pitch": 6.0,
  "yaws": 2,
@@ -69,12 +69,12 @@
      ]
     }
    ],
+   "holeFracMax": 8.535,
+   "holePixelsMax": 409,
+   "headHoleFracMax": 1.814,
+   "headHoleBlobMax": 11,
    "duration": 1.5,
-   "fps": 16.0,
-   "holeFracMax": 14.111,
-   "holePixelsMax": 1113,
-   "headHoleFracMax": 1.093,
-   "headHoleBlobMax": 14
+   "fps": 16.0
   },
   "run": {
    "frames": 16,
@@ -125,12 +125,12 @@
      ]
     }
    ],
+   "holeFracMax": 1.571,
+   "holePixelsMax": 55,
+   "headHoleFracMax": 1.478,
+   "headHoleBlobMax": 9,
    "duration": 0.8,
-   "fps": 20.0,
-   "holeFracMax": 1.314,
-   "holePixelsMax": 67,
-   "headHoleFracMax": 0.868,
-   "headHoleBlobMax": 13
+   "fps": 20.0
   },
   "attack_anim": {
    "frames": 12,
@@ -173,12 +173,12 @@
      ]
     }
    ],
+   "holeFracMax": 1.982,
+   "holePixelsMax": 87,
+   "headHoleFracMax": 1.333,
+   "headHoleBlobMax": 7,
    "duration": 1.0,
-   "fps": 12.0,
-   "holeFracMax": 5.721,
-   "holePixelsMax": 335,
-   "headHoleFracMax": 1.589,
-   "headHoleBlobMax": 25
+   "fps": 12.0
   },
   "pounce_anim": {
    "frames": 14,
@@ -225,12 +225,12 @@
      ]
     }
    ],
+   "holeFracMax": 3.21,
+   "holePixelsMax": 129,
+   "headHoleFracMax": 2.027,
+   "headHoleBlobMax": 46,
    "duration": 1.125,
-   "fps": 12.44,
-   "holeFracMax": 3.412,
-   "holePixelsMax": 217,
-   "headHoleFracMax": 2.652,
-   "headHoleBlobMax": 57
+   "fps": 12.44
   },
   "dark_pact_anim": {
    "frames": 14,
@@ -277,12 +277,12 @@
      ]
     }
    ],
+   "holeFracMax": 3.183,
+   "holePixelsMax": 126,
+   "headHoleFracMax": 3.35,
+   "headHoleBlobMax": 28,
    "duration": 1.5,
-   "fps": 9.33,
-   "holeFracMax": 5.77,
-   "holePixelsMax": 408,
-   "headHoleFracMax": 3.365,
-   "headHoleBlobMax": 85
+   "fps": 9.33
   },
   "shadow_dance": {
    "frames": 12,
@@ -325,12 +325,12 @@
      ]
     }
    ],
+   "holeFracMax": 3.259,
+   "holePixelsMax": 122,
+   "headHoleFracMax": 0.503,
+   "headHoleBlobMax": 1,
    "duration": 0.8,
-   "fps": 15.0,
-   "holeFracMax": 5.711,
-   "holePixelsMax": 356,
-   "headHoleFracMax": 1.276,
-   "headHoleBlobMax": 27
+   "fps": 15.0
   },
   "death": {
    "frames": 16,
@@ -381,12 +381,12 @@
      ]
     }
    ],
+   "holeFracMax": 8.453,
+   "holePixelsMax": 352,
+   "headHoleFracMax": 3.118,
+   "headHoleBlobMax": 39,
    "duration": 1.467,
-   "fps": 10.91,
-   "holeFracMax": 7.348,
-   "holePixelsMax": 594,
-   "headHoleFracMax": 6.707,
-   "headHoleBlobMax": 75
+   "fps": 10.91
   },
   "victory": {
    "frames": 20,
@@ -445,12 +445,12 @@
      ]
     }
    ],
+   "holeFracMax": 3.097,
+   "holePixelsMax": 143,
+   "headHoleFracMax": 2.541,
+   "headHoleBlobMax": 29,
    "duration": 3.6,
-   "fps": 5.56,
-   "holeFracMax": 8.453,
-   "holePixelsMax": 721,
-   "headHoleFracMax": 0.845,
-   "headHoleBlobMax": 20
+   "fps": 5.56
   }
  }
 }

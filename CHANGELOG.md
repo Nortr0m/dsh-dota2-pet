@@ -2,6 +2,25 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.2.5] - 2026-11-03
+
+### 修复
+- **武器不在手上，而是掉在脚底**（用户反馈："脚下是什么？手中的武器也没有了"）。根因：
+  武器模型在源文件里**没有蒙皮数据、顶点还在自己的局部空间**——斯拉克武器的顶点 bbox 是
+  `x[-0.46,0.86] y[-0.13,0.13] z[-1.30,0.90]`，**中心就在世界原点**，而本体高度是
+  `y[0.01,3.34]`。此前的 `merge_parts` 只做权重传递，于是它原地不动地停在脚底。
+  本体里其实有挂点骨骼 `weapon_2`，它在动画中跟着右手移动（idle 在 (-1.20,1.65,-0.95)，
+  攻击时甩到 (0.47,1.74,3.38)）。
+- **修法**：`merge_parts` 新增 `attach` 参数，把指定部件**刚性绑到挂点骨骼**上：
+  先用该骨骼的参考姿势把顶点搬到正确位置，再给权重 1.0。
+  注意不能用绑定姿势——`weapon_2` 在绑定姿势里恰好位于原点 (0,0,0)，乘上去等于没变换；
+  所以取"第一段动画的首帧"作为参考姿势。
+- **实测**（只渲染武器、与本体同相机）：
+  - 修复前：武器占据画面纵向 **91%**、横向 45% → 脚底正中
+  - 修复后：纵向 **21%**、横向 **18%** → 上半身、角色右手侧（与 `wrist_R` 吻合）
+- 顺带：`default_parts()` 现在返回 `(部件列表, 挂点表)`，并把 `weapon` 槽位自动映射到
+  `weapon_2`；三个英雄已重新烘焙
+
 ## [0.2.4] - 2026-11-03
 
 ### 修复
@@ -111,8 +130,8 @@
 - Windows PowerShell 5.1 读取 `.ps1` 的编码问题：脚本改为纯 ASCII 内容并带 UTF-8 BOM，否则中文字符串会被按 GBK 解码导致语法错误
 - 路由注册规避宿主 `prefix` 只对完全一致路径生效的限制：带查询串的接口注册裸路径，静态帧按文件逐条注册精确路由
 
-[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.4...HEAD
-[0.2.4]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.4
+[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.5
 [0.2.2]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.2
 [0.2.1]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.0

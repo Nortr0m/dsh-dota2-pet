@@ -1,5 +1,5 @@
 {
- "build": "20261103T113851",
+ "build": "20261103T154211",
  "size": 220,
  "pitch": 6.0,
  "yaws": 2,
@@ -85,12 +85,12 @@
      ]
     }
    ],
-   "duration": 5.2,
-   "fps": 6.15,
    "holeFracMax": 3.66,
-   "holePixelsMax": 279,
-   "headHoleFracMax": 2.733,
-   "headHoleBlobMax": 35
+   "holePixelsMax": 276,
+   "headHoleFracMax": 1.261,
+   "headHoleBlobMax": 15,
+   "duration": 5.2,
+   "fps": 6.15
   },
   "run_anim": {
    "frames": 13,
@@ -135,12 +135,12 @@
      ]
     }
    ],
-   "duration": 0.8,
-   "fps": 16.25,
    "holeFracMax": 2.105,
    "holePixelsMax": 116,
    "headHoleFracMax": 0.87,
-   "headHoleBlobMax": 6
+   "headHoleBlobMax": 6,
+   "duration": 0.8,
+   "fps": 16.25
   },
   "attack_anim": {
    "frames": 15,
@@ -189,12 +189,12 @@
      ]
     }
    ],
+   "holeFracMax": 9.175,
+   "holePixelsMax": 557,
+   "headHoleFracMax": 3.045,
+   "headHoleBlobMax": 71,
    "duration": 0.967,
-   "fps": 15.51,
-   "holeFracMax": 9.845,
-   "holePixelsMax": 756,
-   "headHoleFracMax": 6.104,
-   "headHoleBlobMax": 123
+   "fps": 15.51
   },
   "spiked_carapace_anim": {
    "frames": 12,
@@ -237,12 +237,12 @@
      ]
     }
    ],
-   "duration": 0.667,
-   "fps": 17.99,
    "holeFracMax": 10.617,
    "holePixelsMax": 755,
    "headHoleFracMax": 5.709,
-   "headHoleBlobMax": 103
+   "headHoleBlobMax": 103,
+   "duration": 0.667,
+   "fps": 17.99
   },
   "cast5_burrow_end": {
    "frames": 12,
@@ -285,12 +285,12 @@
      ]
     }
    ],
-   "duration": 0.733,
-   "fps": 16.37,
-   "holeFracMax": 10.507,
-   "holePixelsMax": 649,
+   "holeFracMax": 8.787,
+   "holePixelsMax": 581,
    "headHoleFracMax": 9.259,
-   "headHoleBlobMax": 193
+   "headHoleBlobMax": 193,
+   "duration": 0.733,
+   "fps": 16.37
   },
   "death": {
    "frames": 32,
@@ -373,12 +373,12 @@
      ]
     }
    ],
+   "holeFracMax": 8.09,
+   "holePixelsMax": 525,
+   "headHoleFracMax": 27.805,
+   "headHoleBlobMax": 330,
    "duration": 2.467,
-   "fps": 12.97,
-   "holeFracMax": 11.542,
-   "holePixelsMax": 950,
-   "headHoleFracMax": 27.909,
-   "headHoleBlobMax": 332
+   "fps": 12.97
   },
   "victory": {
    "frames": 17,
@@ -431,12 +431,12 @@
      ]
     }
    ],
-   "duration": 1.033,
-   "fps": 16.46,
-   "holeFracMax": 12.769,
-   "holePixelsMax": 965,
+   "holeFracMax": 8.796,
+   "holePixelsMax": 600,
    "headHoleFracMax": 2.745,
-   "headHoleBlobMax": 37
+   "headHoleBlobMax": 37,
+   "duration": 1.033,
+   "fps": 16.46
   }
  }
 }

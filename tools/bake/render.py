@@ -161,23 +161,44 @@ class Model:
                 stack.append((c, m))
         return out
 
-    def merge_parts(self, paths, transfer_weights=True):
+    def merge_parts(self, paths, transfer_weights=True, attach=None):
         """把静态部件（默认饰品）并进本体。
 
-        绑定方式（关键）：
-          1) 首选**从本体网格做最近邻权重传递**：饰品每个顶点复制距离最近的本体顶点的
-             JOINTS/WEIGHTS。这是资产流水线的标准做法——帽子跟着头、护腕各自跟着两只
-             小臂、披风跟着脊柱，且形变与本体完全一致。
-          2) 本体没有蒙皮数据时，退回"按绑定姿势的最近骨骼做刚性绑定"。
-        只用 2) 的刚性绑定会让跨骨骼部件被硬拉（兜帽一半跟头一半跟颈），
-        在动作里就会错位、剪切——即"头部不对/穿模"。
+        attach：{部件路径 or 槽位名: 骨骼名}，用于**挂在挂点上的部件**（典型是武器）。
+
+        为什么需要它：武器这类部件在源文件里**没有蒙皮数据、顶点还在自己的局部空间**
+        （斯拉克武器的顶点 bbox 是 x[-0.46,0.86] y[-0.13,0.13] z[-1.30,0.90]，
+        中心就在世界原点），而本体里有一根 weapon_2 骨骼，它在动画中跟着右手移动——
+        那就是武器的挂点。不做这一步，武器会静止在角色脚底（实测就是这样）。
+        处理方式：先用挂点骨骼的**绑定姿势**把顶点搬到正确位置，再刚性绑到该骨骼上。
+
+        其余部件走权重传递（首选）或最近骨骼刚性绑定（兜底）。
         """
+        attach = dict(attach or {})
+
+        def _bind_name(path):
+            """在 attach 里找这个部件该挂哪根骨骼：文件名 / 完整路径 / 去后缀名都试。"""
+            if not attach:
+                return None
+            base = os.path.basename(str(path))
+            stem = os.path.splitext(base)[0]
+            for key in (str(path), base, stem):
+                if key in attach:
+                    return attach[key]
+            # 退化匹配：attach 的键是文件名的一部分（例如 weapon）
+            for k, v in attach.items():
+                kb = os.path.splitext(os.path.basename(str(k)))[0]
+                if kb and (kb in stem or stem.endswith(kb)):
+                    return v
+            return None
+
         body_POS = self.POS.copy()
         body_J = self.JOINTS.copy()
         body_W = self.WEIGHTS.copy()
         have_skin = len(body_W) > 0 and float(body_W.sum()) > 0.0
 
         world = self._world({})
+        bnames = [self.nodes[int(n)].get("name") or "" for n in self.skin_joints] if len(self.skin_joints) else []
         if len(self.skin_joints):
             bone_pos = np.array([world[int(n)][:3, 3] for n in self.skin_joints])
         else:
@@ -201,12 +222,52 @@ class Model:
                 remap[mi] = idx
             n = len(pm.POS)
             off = len(self.POS)
-            if transfer_weights and have_skin:
+            part_pos = pm.POS
+            bind = _bind_name(path)
+            bind_slot = None
+            if bind and bnames:
+                for s, nm in enumerate(bnames):
+                    if nm == bind:
+                        bind_slot = s
+                        break
+            if bind_slot is not None:
+                # 挂在挂点上的部件：把顶点搬到挂点骨骼处，再刚性绑到该骨骼。
+                #
+                # 注意：不能用 _world({}) 的绑定姿势——武器的挂点骨骼（如 weapon_2）
+                # 在绑定姿势里恰好位于原点 (0,0,0)，乘上去等于没变换。挂点骨骼的真正位置
+                # 只在**动画**里才有意义，所以这里取"第一段动画的首帧"作为参考姿势。
+                M = None
+                ref = getattr(self, "attach_ref_pose", None)
+                if ref is not None:
+                    M = ref.get(int(self.skin_joints[bind_slot]))
+                if M is None:
+                    for aname in self.anims:
+                        try:
+                            w2 = self._world(self.sample(aname, 0.0))
+                        except Exception:
+                            continue
+                        cand = w2.get(int(self.skin_joints[bind_slot]))
+                        if cand is not None and float(np.linalg.norm(cand[:3, 3])) > 0.05:
+                            M = cand
+                            break
+                if M is None:
+                    M = world[int(self.skin_joints[bind_slot])]
+                ph = np.concatenate([part_pos, np.ones((n, 1))], axis=1)
+                part_pos = (M @ ph.T).T[:, :3]
+                nh = np.concatenate([pm.NRM, np.zeros((n, 1))], axis=1)
+                part_nrm = (M @ nh.T).T[:, :3]
+                part_nrm /= np.maximum(np.linalg.norm(part_nrm, axis=1, keepdims=True), 1e-9)
+                j4 = np.stack([np.full(n, bind_slot, np.int64), np.zeros(n, np.int64),
+                               np.zeros(n, np.int64), np.zeros(n, np.int64)], axis=1)
+                w4 = np.zeros((n, 4))
+                w4[:, 0] = 1.0
+            elif transfer_weights and have_skin:
                 # 最近邻权重传递：抄最近本体顶点的骨骼与权重
                 d = ((pm.POS[:, None, :] - body_POS[None, :, :]) ** 2).sum(axis=2)
                 nn = d.argmin(axis=1)
                 j4 = body_J[nn]
                 w4 = body_W[nn]
+                part_nrm = pm.NRM
             elif bone_pos is not None and len(bone_pos):
                 d = ((pm.POS[:, None, :] - bone_pos[None, :, :]) ** 2).sum(axis=2)
                 near = d.argmin(axis=1)
@@ -218,12 +279,14 @@ class Model:
                                np.zeros(n, np.int64), np.zeros(n, np.int64)], axis=1)
                 w4 = np.zeros((n, 4))
                 w4[:, 0] = 1.0
+                part_nrm = pm.NRM
             else:
                 j4 = np.zeros((n, 4), np.int64)
                 w4 = np.zeros((n, 4))
+                part_nrm = pm.NRM
             pm_mat = np.array([remap.get(int(m), -1) for m in pm.MAT])
-            self.POS = np.vstack([self.POS, pm.POS])
-            self.NRM = np.vstack([self.NRM, pm.NRM])
+            self.POS = np.vstack([self.POS, part_pos])
+            self.NRM = np.vstack([self.NRM, part_nrm])
             self.UV = np.vstack([self.UV, pm.UV])
             self.TAN = np.vstack([self.TAN, pm.TAN])
             self.JOINTS = np.vstack([self.JOINTS, j4])

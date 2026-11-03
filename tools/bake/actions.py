@@ -65,12 +65,13 @@ def categorize(name, acts):
 
 
 class ActionLib(object):
-    def __init__(self, glb, aseq=None, agrp=None, parts=None):
+    def __init__(self, glb, aseq=None, agrp=None, parts=None, attach=None):
         self.m = render.Model(glb)
         self.parts = list(parts or [])
         if self.parts:
-            # 本体只有身体，兜帽/披风/护腕/肩甲/武器是独立模型，必须并上才像游戏里
-            self.m.merge_parts(self.parts)
+            # 本体只有身体，兜帽/披风/护腕/肩甲/武器是独立模型，必须并上才像游戏里。
+            # attach 指明哪些部件要挂到挂点骨骼上（武器在源文件里没有蒙皮数据与正确位置）。
+            self.m.merge_parts(self.parts, attach=attach)
         self.durations = self._durations()
         self.seqs = []
         if aseq and os.path.exists(aseq):
@@ -494,12 +495,22 @@ def default_parts(hero, items_path, model_dir=None):
     """
     import wardrobe
     w = wardrobe.Wardrobe(items_path)
-    out = []
+    out, attach = [], {}
+
+    def norm(s):
+        return ''.join(ch for ch in str(s).lower() if ch.isalnum())
+
     for r in w.loadout(hero, defaults=True, model_dir=model_dir):
         glb, ok = wardrobe.export_model(r['model'])
-        if ok:
-            out.append(glb)
-    return out
+        if not ok:
+            continue
+        out.append(glb)
+        slot = r.get('slot') or ''
+        # 武器类槽位在源文件里没有蒙皮数据、顶点还在局部空间（中心在世界原点），
+        # 必须显式挂到武器的挂点骨骼上，否则它会静止在角色脚底（实测就是这样）。
+        if 'weapon' in slot.lower():
+            attach[glb] = 'weapon_2'
+    return out, attach
 
 
 def main():
@@ -532,11 +543,12 @@ def main():
     ap.add_argument("--bake-size", type=int, default=220)
     a = ap.parse_args()
 
-    parts = default_parts(a.hero, a.items,
-                          model_dir=os.path.basename(a.glb).replace('.glb', '')) if a.parts == "default" else []
+    parts, attach = ([], {})
     if a.parts == "default":
-        print("并上默认部件 %d 件" % len(parts))
-    lib = ActionLib(a.glb, a.aseq, parts=parts)
+        parts, attach = default_parts(a.hero, a.items,
+                                      model_dir=os.path.basename(a.glb).replace('.glb', ''))
+        print("并上默认部件 %d 件（挂点绑定 %d 件）" % (len(parts), len(attach)))
+    lib = ActionLib(a.glb, a.aseq, parts=parts, attach=attach)
 
     if a.abilities:
         ab = read_abilities(a.hero_file)
