@@ -23,6 +23,8 @@ import json
 import os
 import sys
 
+import numpy as np  # noqa: E402
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
@@ -226,6 +228,94 @@ def pick_bake_set(lib, fps=16):
     return out
 
 
+def hole_stats(img):
+    """返回 (洞像素数, 洞占不透明像素的百分比)。
+
+    "洞"= 被不透明像素包围的透明像素：说明那里本该有面却没有任何三角形覆盖
+    （典型成因是把正面三角形当背面剔掉了）。注意：武器与身体之间围出的背景
+    也会被算进来，属于正常形状，所以判据用的是"占比是否异常大"而非零容忍。
+    """
+    holes, op, _ = _holes_mask(img)
+    n = int(holes.sum())
+    total = int(op.sum())
+    return n, (n / total * 100.0 if total else 0.0)
+
+
+def _holes_mask(img):
+    """返回 (洞掩码, 不透明掩码, 不透明像素的 y 范围)。"""
+    import collections
+    a = np.asarray(img.convert("RGBA"))[:, :, 3] > 8
+    h, w = a.shape
+    trans = ~a
+    reach = np.zeros_like(trans)
+    dq = collections.deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if trans[y, x] and not reach[y, x]:
+                reach[y, x] = True
+                dq.append((y, x))
+    for y in range(h):
+        for x in (0, w - 1):
+            if trans[y, x] and not reach[y, x]:
+                reach[y, x] = True
+                dq.append((y, x))
+    while dq:
+        y, x = dq.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and trans[ny, nx] and not reach[ny, nx]:
+                reach[ny, nx] = True
+                dq.append((ny, nx))
+    ys, _xs = np.where(a)
+    return trans & ~reach, a, (int(ys.min()), int(ys.max())) if len(ys) else (0, h - 1)
+
+
+def _max_blob(mask):
+    """掩码里最大连通块的大小。"""
+    import collections
+    if not mask.any():
+        return 0
+    seen = np.zeros_like(mask)
+    h, w = mask.shape
+    big = 0
+    ys, xs = np.where(mask)
+    for y0, x0 in zip(ys, xs):
+        if seen[y0, x0]:
+            continue
+        dq = collections.deque([(y0, x0)])
+        seen[y0, x0] = True
+        size = 0
+        while dq:
+            y, x = dq.popleft()
+            size += 1
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < h and 0 <= nx < w and mask[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    dq.append((ny, nx))
+        big = max(big, size)
+    return big
+
+
+def frame_quality(img):
+    """单帧质量指标：整体透空、头部区域（上 40%）透空、头部最大单块。
+
+    头部区域单独看是因为"脑门透空"正是用户可见的那个缺陷，而整体透空里混着
+    武器与身体之间围出的合法背景，单看整体无法区分。
+    """
+    holes, op, (y0, y1) = _holes_mask(img)
+    total = max(1, int(op.sum()))
+    head_cut = int(y0 + (y1 - y0) * 0.4)
+    head_holes = holes[:head_cut]
+    head_op = max(1, int(op[:head_cut].sum()))
+    return {
+        "holeFracMax": round(float(holes.sum()) / total * 100.0, 3),
+        "holePixelsMax": int(holes.sum()),
+        "headHoleFracMax": round(float(head_holes.sum()) / head_op * 100.0, 3),
+        "headHoleBlobMax": int(_max_blob(head_holes)),
+    }
+
+
 def bake(m, outdir, items=None, size=220, yaw=25.0, pitch=6.0, yaws=1, loops=None,
          cats=None, log=print):
     """把动作烘成帧序列 + manifest.json（桌宠包内置素材，离线渲染一次即可）。
@@ -255,13 +345,20 @@ def bake(m, outdir, items=None, size=220, yaw=25.0, pitch=6.0, yaws=1, loops=Non
             yaw_i = yaw if yaws == 1 else (360.0 * yi / yaws)
             poses = frames_of(m, anim, n, exclusive=True)
             names = []
+            q = {"holeFracMax": 0.0, "holePixelsMax": 0, "headHoleFracMax": 0.0, "headHoleBlobMax": 0}
             for i, pose in enumerate(poses):
                 img = render.render(m, pose, size=size, yaw=yaw_i, pitch=pitch,
                                     mode="shaded", textured=True)
+                # 记录"透空"指标：单面剔除曾把兜帽正面的面剔掉、脑门透空（占角色 4.3%），
+                # 这个指标用来防回归（测试里会断言头部区域不能有大洞）
+                fq = frame_quality(img)
+                for k, v in fq.items():
+                    q[k] = max(q[k], v)
                 fn = "%s_y%02d_f%03d.png" % (anim.replace("@", ""), yi, i)
                 img.save(os.path.join(outdir, fn))
                 names.append(fn)
             entry["yaws"].append({"yaw": round(yaw_i, 1), "files": names})
+            entry.update(q)
         dur = lib_dur(m, anim)
         entry["duration"] = dur
         entry["fps"] = round(n / dur, 2) if dur else 12

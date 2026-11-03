@@ -86,7 +86,11 @@
     }
    ],
    "duration": 5.2,
-   "fps": 6.15
+   "fps": 6.15,
+   "holeFracMax": 3.66,
+   "holePixelsMax": 279,
+   "headHoleFracMax": 2.733,
+   "headHoleBlobMax": 35
   },
   "run_anim": {
    "frames": 13,
@@ -132,7 +136,11 @@
     }
    ],
    "duration": 0.8,
-   "fps": 16.25
+   "fps": 16.25,
+   "holeFracMax": 2.105,
+   "holePixelsMax": 116,
+   "headHoleFracMax": 0.87,
+   "headHoleBlobMax": 6
   },
   "attack_anim": {
    "frames": 15,
@@ -182,7 +190,11 @@
     }
    ],
    "duration": 0.967,
-   "fps": 15.51
+   "fps": 15.51,
+   "holeFracMax": 9.845,
+   "holePixelsMax": 756,
+   "headHoleFracMax": 6.104,
+   "headHoleBlobMax": 123
   },
   "spiked_carapace_anim": {
    "frames": 12,
@@ -226,7 +238,11 @@
     }
    ],
    "duration": 0.667,
-   "fps": 17.99
+   "fps": 17.99,
+   "holeFracMax": 10.617,
+   "holePixelsMax": 755,
+   "headHoleFracMax": 5.709,
+   "headHoleBlobMax": 103
   },
   "cast5_burrow_end": {
    "frames": 12,
@@ -270,7 +286,11 @@
     }
    ],
    "duration": 0.733,
-   "fps": 16.37
+   "fps": 16.37,
+   "holeFracMax": 10.507,
+   "holePixelsMax": 649,
+   "headHoleFracMax": 9.259,
+   "headHoleBlobMax": 193
   },
   "death": {
    "frames": 32,
@@ -354,7 +374,11 @@
     }
    ],
    "duration": 2.467,
-   "fps": 12.97
+   "fps": 12.97,
+   "holeFracMax": 11.542,
+   "holePixelsMax": 950,
+   "headHoleFracMax": 27.909,
+   "headHoleBlobMax": 332
   },
   "victory": {
    "frames": 17,
@@ -408,7 +432,11 @@
     }
    ],
    "duration": 1.033,
-   "fps": 16.46
+   "fps": 16.46,
+   "holeFracMax": 12.769,
+   "holePixelsMax": 965,
+   "headHoleFracMax": 2.745,
+   "headHoleBlobMax": 37
   }
  }
 }

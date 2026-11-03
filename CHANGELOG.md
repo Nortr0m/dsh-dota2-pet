@@ -2,6 +2,25 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.2.4] - 2026-11-03
+
+### 修复
+- **模型"透空/看着是空的"**（用户反馈：斯拉克脑门是空的，直接看到后面的身体）。定位过程：
+  - 先量化"洞"——被不透明像素包围的透明像素。全身取景下斯拉克占角色的 **4.31%**（531 像素），
+    司夜刺客 0.81%、食人魔 0.19%
+  - 逐部件排查：洞来自**兜帽**（本体只有 7 个洞；装上兜帽变 19 个，最大一块 11 像素，位置
+    正在 y=0.29 的脑门处）；武器贡献的 209 个洞经同相机对照后确认是"武器与身体之间围出的背景"，
+    **属正常形状**（其中只有 6 像素落在本体不透明区域）
+  - 排除 alpha 裁剪：把阈值从 0.5 降到完全关闭，洞数几乎不变（295 → 294）
+  - 排除"三角形绕序反了"：按几何法线与顶点法线把不一致的三角形翻转回来，洞数不变
+  - **真正原因**：`render()` 的单面剔除 `keep = area > 0` 把兜帽正面的一小块当背面剔掉，
+    那个位置就没有任何面覆盖 → 透空
+- **修法**：**取消单面剔除、改为双面渲染**，并在着色时把法线按视线翻正
+  （等价于 `gl_FrontFacing ? N : -N`），这样补上的背面不会变成黑块。
+  实测兜帽的脑门洞 **19 → 8**（回到本体基线），近似全黑像素仅 1.16%
+- 代价：要多光栅化 **2.22 倍**三角形（单面原本丢弃 54.9%），220px 每帧约 1.2 秒，
+  只影响离线烘焙；三个英雄已重新烘焙
+
 ## [0.2.3] - 2026-11-03
 
 ### 修复
@@ -92,8 +111,8 @@
 - Windows PowerShell 5.1 读取 `.ps1` 的编码问题：脚本改为纯 ASCII 内容并带 UTF-8 BOM，否则中文字符串会被按 GBK 解码导致语法错误
 - 路由注册规避宿主 `prefix` 只对完全一致路径生效的限制：带查询串的接口注册裸路径，静态帧按文件逐条注册精确路由
 
-[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.3...HEAD
-[0.2.3]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.3
+[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.4
 [0.2.2]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.2
 [0.2.1]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.0

@@ -446,6 +446,11 @@ def rasterize(tri, nrm_tri, uv_tri, tan_tri, mat_tri, tex, ntex, cuts, idx, W, H
         nn[nn == 0] = 1.0
         nd = n / nn
 
+        # 双面渲染时把法线按视线翻正（等价于 gl_FrontFacing ? N : -N）：
+        # 否则被看到的内表面会按"背对光源"着色，补洞的地方会变成黑块。
+        if view is not None:
+            nd = np.where(((nd @ view) < 0.0)[..., None], -nd, nd)
+
         uv = (l0[..., None] * uv_tri[i, 0] + l1[..., None] * uv_tri[i, 1]
               + l2[..., None] * uv_tri[i, 2])
 
@@ -589,7 +594,12 @@ def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
     mat_tri = model.MAT[model.TRIS[:, 0]]
     area = ((tri[:, 1, 0] - tri[:, 0, 0]) * (tri[:, 2, 1] - tri[:, 0, 1])
             - (tri[:, 2, 0] - tri[:, 0, 0]) * (tri[:, 1, 1] - tri[:, 0, 1]))
-    keep = area > 0
+    # 不做单面剔除：饰品部件与本体混在一起时，部件的朝向判定常有局部不一致，
+    # 早先的 `keep = area > 0` 会把兜帽正面的一小块当背面剔掉，画面就在脑门处"透空"、
+    # 直接看到后面的身体（实测洞像素占角色 4.3%，双面渲染后回到本体基线）。
+    # 双面渲染后由 z-buffer 决定遮挡，并在着色时把法线按视线翻正（见 rasterize），
+    # 所以补上的背面不会变成黑块。
+    keep = np.ones(len(area), bool)
     tex = model.tex if textured else [None] * len(model.tex)
     ntex = model.ntex if textured else [None] * len(getattr(model, "ntex", []))
     if os.environ.get('D2_SHOW_NORMALS'):

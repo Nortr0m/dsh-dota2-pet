@@ -43,6 +43,14 @@ for (const hero of heroes) {
       assert.ok(a.frames >= 2, `${n} 帧数太少`);
       assert.ok(a.fps > 0 && a.fps <= 60, `${n} 帧率不合理: ${a.fps}`);
       assert.ok(Array.isArray(a.yaws) && a.yaws.length >= 1, `${n} 缺 yaws`);
+      // 透空指标（烘焙时写入）：单面剔除曾把兜帽正面剔掉，脑门出现空洞。
+      // 阈值放得较松——整体透空里混着"武器与身体之间围出的合法的背景"，只拦明显异常。
+      if (typeof a.holeFracMax === 'number') {
+        assert.ok(a.holeFracMax < 20, `${hero}/${n} 整体透空 ${a.holeFracMax}%（>20% 说明有面被剔掉）`);
+      }
+      if (typeof a.headHoleBlobMax === 'number') {
+        assert.ok(a.headHoleBlobMax <= 400, `${hero}/${n} 头部最大空洞 ${a.headHoleBlobMax}px 异常`);
+      }
       for (const y of a.yaws) {
         assert.equal(y.files.length, a.frames, `${n} 的帧数与文件数不符`);
       }
