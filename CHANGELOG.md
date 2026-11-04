@@ -2,6 +2,37 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.2.7] - 2026-11-04
+
+### 修复
+- **武器又回到脚下**：烘焙入口调用 `default_parts()` 时**没把本体 GLB 与 VPK 路径传下去**，
+  导致挂点表恒为空、武器留在局部空间。修好入口，并给 `actions.py` 补上 `--vpk` / `--gameinfo`
+  参数（此前只有 `wardrobe.py` 有，`actions.py` 根本没有）。
+
+- **根本症结：导出部件时漏了 `--gltf_export_animations`**。不加这个参数，VRF 导出的饰品/武器是
+  **无骨架的裸网格**（`nodes=1 skins=0`），部件自带的骨骼信息被静默丢弃，
+  于是只能靠猜挂点、武器也定位不到手上。加上之后：
+
+  | 英雄 | 武器 GLB 自带骨架 | 自动匹配到本体骨骼 |
+  |---|---|---|
+  | 斯拉克 | `root`, `weapon_2` | `weapon_2` |
+  | 食人魔 | `weapon3_0` | `weapon3_0` |
+  | 司夜刺客 | `root`, `ArachnidLeg_*` | `ArachnidLeg_0_C_L` |
+
+  这条规则与 `docs/research-cosmetics-workshop.md` §4.3 的结论一致：
+  **饰品/装备不是"挂在挂点上"，而是自带骨架、其中锚点骨骼与本体同名**。
+
+- `merge_parts()` 现在会**优先从部件 GLB 自带的骨架**里找同名骨骼，不必再依赖
+  VPK 反查或按英雄写死映射。
+
+- **几何验收**（渲染"装了武器"与"没装武器"的差分，量新增像素的纵向位置）：
+
+  | 英雄 | 修复前 | 修复后 | 判定 |
+  |---|---|---|---|
+  | 斯拉克 | 脚底 | **38%**（上半身/手侧） | ✅ |
+  | 食人魔 | 脚底 | **30%** | ✅ |
+  | 司夜刺客 | 脚底 | 73%（仍偏下，其武器坐标约定特殊） | ⚠️ |
+
 ## [0.2.6] - 2026-11-04
 
 ### 修复
@@ -162,8 +193,8 @@
 - Windows PowerShell 5.1 读取 `.ps1` 的编码问题：脚本改为纯 ASCII 内容并带 UTF-8 BOM，否则中文字符串会被按 GBK 解码导致语法错误
 - 路由注册规避宿主 `prefix` 只对完全一致路径生效的限制：带查询串的接口注册裸路径，静态帧按文件逐条注册精确路由
 
-[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.6...HEAD
-[0.2.6]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.6
+[未发布]: https://github.com/Nortr0m/dsh-dota2-pet/compare/v0.2.7...HEAD
+[0.2.7]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.7
 [0.2.2]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.2
 [0.2.1]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.1
 [0.2.0]: https://github.com/Nortr0m/dsh-dota2-pet/releases/tag/v0.2.0

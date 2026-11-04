@@ -334,6 +334,40 @@ def bake(m, outdir, items=None, size=220, yaw=25.0, pitch=6.0, yaws=1, loops=Non
     # build 戳：帧文件名不变，前端要靠它做缓存失效，否则浏览器缓存旧图（路由给了 max-age）
     manifest = {"build": _dt.datetime.utcnow().strftime("%Y%m%dT%H%M%S"),
                 "size": size, "pitch": pitch, "yaws": yaws, "actions": {}}
+
+    # ---------------------------------------------------------- 取景锚点
+    # 一个英雄**所有动作共用一个锚点**。这一步是"以人物为中心的晃动"的关键：
+    #   * 旧做法每帧用当前帧包围盒重新取景 => 相机每帧重新瞄准，人物看起来
+    #     "绕着空间里某个点甩"，而且尺寸忽大忽小（实测 idle 脉动 15.8%、
+    #     run 23.8%、death 100.1% —— 死亡时人物先缩成一半再撑满整幅）。
+    #   * 但锚点也不能"每个动作各算一个"：radius 决定相机距离，斯拉克各动作
+    #     所需半径差到 2 倍（idle 2.17 / 黑暗契约 4.10），按动作算会让人物在
+    #     切换动作时"啪"地跳大小（145px -> 49px）。
+    # 所以这里按"整个英雄"求一个全局锚点：不随帧变（不抖）、不随动作变（不跳），
+    # 幅度大的动作允许四肢末端少量出画，再用长焦 zoom 把人物放大回合适尺寸。
+    # 锚点依赖朝向，因此每个 yaw 各算一次。
+    fov = 32.0
+    bake_anims = [a for a, _ in items if a in m.anims]
+    anchors = {}
+    for yi in range(max(1, yaws)):
+        yaw_i = yaw if yaws == 1 else (360.0 * yi / yaws)
+        anchors[yi] = render.hero_anchor(m, bake_anims, size=size, yaw=yaw_i,
+                                         pitch=pitch, fov=fov)
+        for k, v in sorted(anchors[yi].items()):
+            log("锚点 yaw=%5.1f%%  %-18s radius=%.2f" % (yaw_i, k, v[1]))
+
+    def overflow_of(anchor, over, yaw_i):
+        """这帧有多少比例的顶点落在画布外（极端动作允许少量，用于知情而非报错）。"""
+        pos, _ = m.pose_vertices(over)
+        if len(pos) == 0:
+            return 0.0
+        d = render._root_xz_delta(m, over)
+        if d is not None:
+            pos = pos - d
+        s = render._project(pos, anchor[0], anchor[1], size, size, yaw_i, pitch, fov)
+        return float(((s[:, 0] < -1) | (s[:, 0] > size + 1) |
+                      (s[:, 1] < -1) | (s[:, 1] > size + 1)).mean())
+
     for anim, n in items:
         if anim not in m.anims:
             log("跳过（模型里没有）: %s" % anim)
@@ -345,12 +379,16 @@ def bake(m, outdir, items=None, size=220, yaw=25.0, pitch=6.0, yaws=1, loops=Non
             # 朝向从正面（0°）开始往后排：曾经的 -180 起始会把"背面"排在 yaws[0]，
             # 而消费方（前端 / 桌面窗口）默认取第一组，结果桌宠一直用背面示人。
             yaw_i = yaw if yaws == 1 else (360.0 * yi / yaws)
+            anchor = anchors[yi].get(anim)
             poses = frames_of(m, anim, n, exclusive=True)
+            ov = max((overflow_of(anchor, p, yaw_i) for p in poses), default=0.0)
+            if ov > 0.05:
+                log("  注意 %s 峰值 %.1f%% 顶点出画（动作幅度极大，已按表观身高归一化）" % (anim, ov * 100))
             names = []
             q = {"holeFracMax": 0.0, "holePixelsMax": 0, "headHoleFracMax": 0.0, "headHoleBlobMax": 0}
             for i, pose in enumerate(poses):
                 img = render.render(m, pose, size=size, yaw=yaw_i, pitch=pitch,
-                                    mode="shaded", textured=True)
+                                    mode="shaded", textured=True, anchor=anchor)
                 # 记录"透空"指标：单面剔除曾把兜帽正面的面剔掉、脑门透空（占角色 4.3%），
                 # 这个指标用来防回归（测试里会断言头部区域不能有大洞）
                 fq = frame_quality(img)
@@ -631,6 +669,10 @@ def main():
     ap.add_argument("--hero", default="slark")
     ap.add_argument("--glb", default=os.path.join(HERE, "export", "slark.glb"))
     ap.add_argument("--aseq", default=os.path.join(HERE, "data", "slark_ASEQ.txt"))
+    # 武器挂点要从 VPK 里读装备骨架才能确定；不给就在默认 Steam 路径里找
+    ap.add_argument("--vpk", default=os.environ.get("DOTA2_DIR") or
+                    r"D:\SteamLibrary\steamapps\common\dota 2 beta\game\dota")
+    ap.add_argument("--gameinfo", default=None)
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--json", default=None)
     ap.add_argument("--sheet", action="store_true")
@@ -656,10 +698,19 @@ def main():
     ap.add_argument("--bake-size", type=int, default=220)
     a = ap.parse_args()
 
+    # gameinfo 默认由 --vpk 推导
+    if not a.gameinfo:
+        a.gameinfo = os.path.join(a.vpk, "gameinfo.gi")
+
     parts, attach = ([], {})
     if a.parts == "default":
-        parts, attach = default_parts(a.hero, a.items,
-                                      model_dir=os.path.basename(a.glb).replace('.glb', ''))
+        # 注意：必须把本体 GLB 与 VPK 路径传下去，否则推导不出武器挂点骨骼，
+        # 武器会留在局部空间（表现就是"刀掉在脚底"）。
+        # 这里曾经漏传，导致 default_parts 内部拿不到 base_glb，挂点表恒为空。
+        parts, attach = default_parts(
+            a.hero, a.items,
+            model_dir=os.path.basename(a.glb).replace('.glb', ''),
+            base_glb=a.glb, vpk=a.vpk, gameinfo=a.gameinfo)
         print("并上默认部件 %d 件（挂点绑定 %d 件）" % (len(parts), len(attach)))
     lib = ActionLib(a.glb, a.aseq, parts=parts, attach=attach)
 

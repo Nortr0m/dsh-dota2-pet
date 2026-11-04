@@ -1,5 +1,5 @@
 {
- "build": "20261103T154211",
+ "build": "20261104T105419",
  "size": 220,
  "pitch": 6.0,
  "yaws": 2,
@@ -85,10 +85,10 @@
      ]
     }
    ],
-   "holeFracMax": 3.66,
-   "holePixelsMax": 276,
-   "headHoleFracMax": 1.261,
-   "headHoleBlobMax": 15,
+   "holeFracMax": 3.717,
+   "holePixelsMax": 287,
+   "headHoleFracMax": 0.892,
+   "headHoleBlobMax": 13,
    "duration": 5.2,
    "fps": 6.15
   },
@@ -135,10 +135,10 @@
      ]
     }
    ],
-   "holeFracMax": 2.105,
-   "holePixelsMax": 116,
-   "headHoleFracMax": 0.87,
-   "headHoleBlobMax": 6,
+   "holeFracMax": 6.585,
+   "holePixelsMax": 531,
+   "headHoleFracMax": 1.435,
+   "headHoleBlobMax": 21,
    "duration": 0.8,
    "fps": 16.25
   },
@@ -189,10 +189,10 @@
      ]
     }
    ],
-   "holeFracMax": 9.175,
-   "holePixelsMax": 557,
-   "headHoleFracMax": 3.045,
-   "headHoleBlobMax": 71,
+   "holeFracMax": 10.766,
+   "holePixelsMax": 832,
+   "headHoleFracMax": 4.714,
+   "headHoleBlobMax": 95,
    "duration": 0.967,
    "fps": 15.51
   },
@@ -237,10 +237,10 @@
      ]
     }
    ],
-   "holeFracMax": 10.617,
-   "holePixelsMax": 755,
-   "headHoleFracMax": 5.709,
-   "headHoleBlobMax": 103,
+   "holeFracMax": 10.074,
+   "holePixelsMax": 610,
+   "headHoleFracMax": 5.19,
+   "headHoleBlobMax": 70,
    "duration": 0.667,
    "fps": 17.99
   },
@@ -285,10 +285,10 @@
      ]
     }
    ],
-   "holeFracMax": 8.787,
-   "holePixelsMax": 581,
-   "headHoleFracMax": 9.259,
-   "headHoleBlobMax": 193,
+   "holeFracMax": 8.567,
+   "holePixelsMax": 366,
+   "headHoleFracMax": 7.644,
+   "headHoleBlobMax": 110,
    "duration": 0.733,
    "fps": 16.37
   },
@@ -373,10 +373,10 @@
      ]
     }
    ],
-   "holeFracMax": 8.09,
-   "holePixelsMax": 525,
-   "headHoleFracMax": 27.805,
-   "headHoleBlobMax": 330,
+   "holeFracMax": 8.404,
+   "holePixelsMax": 447,
+   "headHoleFracMax": 14.557,
+   "headHoleBlobMax": 230,
    "duration": 2.467,
    "fps": 12.97
   },
@@ -431,10 +431,10 @@
      ]
     }
    ],
-   "holeFracMax": 8.796,
-   "holePixelsMax": 600,
-   "headHoleFracMax": 2.745,
-   "headHoleBlobMax": 37,
+   "holeFracMax": 6.007,
+   "holePixelsMax": 298,
+   "headHoleFracMax": 1.809,
+   "headHoleBlobMax": 15,
    "duration": 1.033,
    "fps": 16.46
   }

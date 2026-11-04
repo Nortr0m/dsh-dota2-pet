@@ -224,6 +224,17 @@ class Model:
             off = len(self.POS)
             part_pos = pm.POS
             bind = _bind_name(path)
+            # 若调用方没给 attach，就看部件 GLB 自带的骨架里有没有与本体同名的骨骼。
+            # 这是饰品/武器的通用规则（见 docs/research-cosmetics-workshop.md §4.3）：
+            # **部件骨骼与本体骨骼同名 = 锚点**。前提是导出时加了
+            # --gltf_export_animations，否则 GLB 是 skins=0 的裸网格，读不到骨骼。
+            if not bind and len(pm.skin_joints) and bnames:
+                pn = [pm.nodes[int(x)].get("name") or "" for x in pm.skin_joints]
+                body_l = {n.lower(): n for n in bnames}
+                hits = [n for n in pn if n.lower() in body_l and n.lower() != "root"]
+                if hits:
+                    hits.sort(key=lambda s: (0 if "weapon" in s.lower() else 1, len(s)))
+                    bind = body_l[hits[0].lower()]
             bind_slot = None
             if bind and bnames:
                 for s, nm in enumerate(bnames):
@@ -569,6 +580,27 @@ def rasterize(tri, nrm_tri, uv_tri, tan_tri, mat_tri, tex, ntex, cuts, idx, W, H
     return img, mask
 
 
+def _root_xz_delta(model, over):
+    """root 骨骼相对绑定姿势的 XZ 位移（root motion），Y 不动。
+
+    跑动/突进这类动作，root 会沿 Z 走出 7.6 / 2.2 个单位；桌宠要的是**原地**做动作，
+    所以把这段平移从顶点上扣掉。身体上下起伏在 Y 上，保留，那正是自然的晃动。
+    """
+    if not len(model.skin_joints):
+        return None
+    names = [model.nodes[int(n)].get("name") or "" for n in model.skin_joints]
+    if "root" not in names:
+        return None
+    node = int(model.skin_joints[names.index("root")])
+    bind = model._world({})
+    cur = getattr(model, "last_world", None) or {}
+    if node not in bind or node not in cur:
+        return None
+    d = cur[node][:3, 3] - bind[node][:3, 3]
+    d[1] = 0.0
+    return d
+
+
 def _bind_anchor(model, framing="full"):
     """取景锚点 (center, radius)，**只按绑定姿势算**，整个动作期间复用同一个值。
 
@@ -604,41 +636,136 @@ def _bind_anchor(model, framing="full"):
     return center, radius
 
 
-def _root_xz_delta(model, over):
-    """root 骨骼相对绑定姿势的 XZ 位移（root motion），Y 不动。
+def hero_anchor(model, anims, size=220, yaw=25.0, pitch=6.0, fov=32.0,
+                samples=16, target=0.60, framing="full", plant=True):
+    """给一个英雄算取景锚点：{动作名: (center, radius)}，**每个动作一个，全程不变**。
 
-    跑动/突进这类动作，root 会沿 Z 走出 7.6 / 2.2 个单位；桌宠要的是**原地**做动作，
-    所以把这段平移从顶点上扣掉。身体上下起伏在 Y 上，保留，那正是自然的晃动。
+    为什么不能沿用旧做法（每帧用当前帧包围盒重新取景）
+        那等于相机每帧重新瞄准，人物会"绕着空间里某个点甩"而不是自身晃动，
+        而且尺寸忽大忽小。实测已发布帧的尺寸脉动：
+            idle 15.8%   run 23.8%   attack 19.6%   death 100.1%
+        death 那 100% 就是"先缩成一半再撑满整幅"，非常刺眼。
+
+    为什么不能"全部动作共用一个半径"
+        半径决定相机距离，斯拉克各动作所需半径差到 2 倍（idle 2.17 / 黑暗契约 4.10）。
+        统一取最大值能让所有动作都不出画，但代价是 idle 从 130 px 缩到 87 px——
+        桌宠凭空小三成，不可接受。
+
+    本函数的做法：**按动作归一化表观身高**
+        对每个动作二分出一个半径，使该动作"站得最直的那一帧"在画面里的高度
+        恰好是 target × size。于是：
+          * 动作内部半径固定 => 不抖、不忽大忽小；
+          * 动作之间表观身高一致 => 切换动作没有尺寸跳变；
+          * 幅度极大的动作（黑暗契约下蹲再撑开、死亡躺平）超出取景框时，
+            让四肢末端少量出画 —— 这是**动作本身的幅度**，游戏里也一样会顶出镜头，
+            比把人物整体缩小三成更合理。
+        注意这里不再用"包围盒对角线"当半径：二分出的最小不越界半径必然被
+        **偏心帧**卡住（某个顶点贴边、而整体跨度很小），此时再乘 zoom 放大就会
+        大面积出画（实测黑暗契约 46% 顶点跑出版面）。归一化身高避开了这个坑。
+
+    返回 dict：{动作名: (center, radius)}；render() 的 anchor 参数直接接它的值。
     """
-    if not len(model.skin_joints):
-        return None
-    names = [model.nodes[int(n)].get("name") or "" for n in model.skin_joints]
-    if "root" not in names:
-        return None
-    node = int(model.skin_joints[names.index("root")])
-    bind = model._world({})
-    cur = getattr(model, "last_world", None) or {}
-    if node not in bind or node not in cur:
-        return None
-    d = cur[node][:3, 3] - bind[node][:3, 3]
-    d[1] = 0.0
-    return d
+    # 顶点数进 key：merge_parts() 会改变包围盒（披风/兜帽撑大轮廓），
+    # 不带它的话，先对裸体算过锚点再并部件就会拿到陈旧值。
+    key = (tuple(sorted(anims)), len(model.POS), size, round(yaw, 2), round(pitch, 2),
+           fov, target, framing, plant)
+    store = getattr(model, "_hero_anchor", None)
+    if store is None:
+        store = model._hero_anchor = {}
+    if key in store:
+        return store[key]
+
+    center, _ = _bind_anchor(model, framing)
+    out = {}
+    for a in anims:
+        if a not in model.anims:
+            continue
+        times = np.array([], dtype=float)
+        for s in model.anims[a]["samplers"]:
+            times = np.concatenate([times, _accessor(model.json, model.blob, s["input"]).ravel()])
+        if len(times) == 0:
+            continue
+        fp = []
+        for t in np.linspace(float(times.min()), float(times.max()), max(4, int(samples))):
+            over = model.sample(a, t)
+            pos, _ = model.pose_vertices(over)
+            if len(pos) == 0:
+                continue
+            if plant:
+                d = _root_xz_delta(model, over)
+                if d is not None:
+                    pos = pos - d
+            fp.append(pos)
+        if not fp:
+            continue
+
+        def tallest(radius):
+            """这一组帧里"站得最高"的那帧的屏幕高度。"""
+            h = 0.0
+            for pos in fp:
+                s = _project(pos, center, radius, size, size, yaw, pitch, fov)
+                h = max(h, s[:, 1].max() - s[:, 1].min())
+            return h
+
+        want = target * size
+        lo, hi = 0.6, 12.0
+        for _ in range(24):
+            mid = (lo + hi) / 2
+            # 屏幕高度随半径单调递减
+            if tallest(mid) > want:
+                lo = mid
+            else:
+                hi = mid
+        out[a] = (center, hi)
+
+    store[key] = out
+    model._hero_anchor = store
+    return out
+
+
+def _project(pos, center, radius, W, H, yaw, pitch, fov, zoom=1.0):
+    """把顶点投到屏幕坐标（与 render() 内部完全一致的相机设置）。"""
+    ya, pa = math.radians(yaw), math.radians(pitch)
+    dist = radius / math.tan(math.radians(fov) / 2) * 1.05
+    eye = center + np.array([math.sin(ya) * math.cos(pa), math.sin(pa),
+                             math.cos(ya) * math.cos(pa)]) * dist
+    view = look_at(eye, center, np.array([0.0, 1.0, 0.0]))
+    proj = perspective(math.radians(fov), 1.0, max(dist - radius * 2.2, 0.01), dist + radius * 4)
+    proj = proj.copy()
+    proj[0, 0] *= zoom
+    proj[1, 1] *= zoom
+    vw = (view @ np.concatenate([pos, np.ones((len(pos), 1))], axis=1).T).T
+    clip = (proj @ vw.T).T
+    w = clip[:, 3:4].copy()
+    w[np.abs(w) < 1e-9] = 1e-9
+    ndc = clip[:, :3] / w
+    return np.stack([(ndc[:, 0] * 0.5 + 0.5) * W, (1.0 - (ndc[:, 1] * 0.5 + 0.5)) * H], axis=1)
 
 
 def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
-           light=(0.42, 0.78, 0.46), ss=2, textured=True, framing="full", plant=True):
+           light=(0.42, 0.78, 0.46), ss=2, textured=True, framing="full", plant=True,
+           anchor=None):
     """渲染一帧。
 
+    anchor=(center, radius[, zoom])：取景锚点。**整个动作期间必须传同一个值**，
+    烘帧前用 hero_anchor() 算好一次（见它的说明）——这是"人物以自身为中心晃动"的关键。
+    不给则退回绑定姿势锚点（同样不随帧变化）。
+
     plant=True：扣掉 root 骨骼在 XZ 上的位移（root motion），让人物**原地**做动作。
-    不做这一步，run/attack 的 root 会沿 Z 走出 7.6 / 2.2 个单位，人物直接跑出画面。
-    Y 方向保留，所以身体的起伏（这才是自然的"人物自身晃动"）不会被抹掉。
+    不做这一步，run/attack 的 root 会沿 Z 走出 7.6 / 2.2 个单位，人物直接跑出画面
+    （实测 run 不扣会漂移 512 px）。Y 方向保留，所以身体的起伏（这才是自然的
+    "人物自身晃动"）不会被抹掉。
     """
     pos, nrm = model.pose_vertices(over)
     if len(pos) == 0:
         return Image.new("RGBA", (size, size), (0, 0, 0, 0))
 
-    # 取景锚点一律取绑定姿势并全程复用，见 _bind_anchor 的说明
-    center, radius = _bind_anchor(model, framing)
+    zoom = 1.0
+    if anchor is None:
+        center, radius = _bind_anchor(model, framing)
+    else:
+        center, radius = anchor[0], anchor[1]
+        zoom = anchor[2] if len(anchor) > 2 else 1.0
 
     if plant:
         d = _root_xz_delta(model, over)
@@ -651,6 +778,11 @@ def render(model, over, size=420, yaw=25.0, pitch=8.0, fov=32.0, mode="shaded",
                              math.cos(ya) * math.cos(pa)]) * dist
     view = look_at(eye, center, np.array([0.0, 1.0, 0.0]))
     proj = perspective(math.radians(fov), 1.0, max(dist - radius * 2, 0.01), dist + radius * 4)
+    if zoom != 1.0:
+        # 长焦：只放大画面，不动相机位置，所以不会引入新的出画（hero_anchor 已按未放大判定）
+        proj = proj.copy()
+        proj[0, 0] *= zoom
+        proj[1, 1] *= zoom
 
     W = H = int(size * ss)
     vw = (view @ np.concatenate([pos, np.ones((len(pos), 1))], axis=1).T).T

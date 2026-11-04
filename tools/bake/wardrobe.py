@@ -140,8 +140,13 @@ def export_model(model_path, vpk=DEFAULT_VPK, gameinfo=DEFAULT_GAMEINFO, exe=EXE
     vpk_path = model_path.replace("\\", "/")
     if not vpk_path.endswith("_c"):
         vpk_path += "_c"
+    # 必须加 --gltf_export_animations：不加时 VRF 导出的饰品是"无骨架的裸网格"
+    # （nodes=1 skins=0），武器/饰品自带的骨骼与蒙皮信息会被静默丢掉，
+    # 于是我们只能靠猜挂点、武器也定位不到手上。加上之后 GLB 自带骨架，
+    # merge_parts 里"饰品骨骼与本体同名即绑"的规则才能真正生效。
     cmd = [exe, "-i", os.path.join(vpk, "pak01_dir.vpk"), "--vpk_filepath", vpk_path,
            "-o", out, "-d", "--gltf_export_format", "glb", "--gltf_export_materials",
+           "--gltf_export_animations",
            "--game", gameinfo, "--threads", "4"]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
     return out, os.path.exists(out) and os.path.getsize(out) > 1024
